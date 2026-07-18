@@ -29,6 +29,8 @@ final class HintOverlayController: NSObject, NSWindowDelegate {
 
     /// Tab으로 스크롤 모드 전환
     var onSwitchToScrollMode: (() -> Void)?
+    /// "/"로 그리드 모드 전환
+    var onSwitchToGridMode: (() -> Void)?
 
     var isVisible: Bool { panel?.isVisible ?? false }
 
@@ -114,6 +116,9 @@ final class HintOverlayController: NSObject, NSWindowDelegate {
             return nil
         case kVK_Tab:
             onSwitchToScrollMode?()
+            return nil
+        case kVK_ANSI_Slash:
+            onSwitchToGridMode?()
             return nil
         default:
             break

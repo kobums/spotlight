@@ -21,7 +21,7 @@ final class ScrollModeController: NSObject, NSWindowDelegate {
         // 스크롤 이벤트는 포인터 아래 창으로 가므로, 포인터를 대상 창 중앙으로 이동
         let windowFrame = HintTargetCollector.focusedWindowFrame()
         if let windowFrame {
-            postMouseMove(to: CGPoint(x: windowFrame.midX, y: windowFrame.midY))
+            HintActionPerformer.moveCursor(to: CGPoint(x: windowFrame.midX, y: windowFrame.midY))
         }
 
         let screen = windowFrame.flatMap { frame in
@@ -96,13 +96,6 @@ final class ScrollModeController: NSObject, NSWindowDelegate {
         let source = CGEventSource(stateID: .hidSystemState)
         CGEvent(scrollWheelEvent2Source: source, units: .line,
                 wheelCount: 2, wheel1: dy, wheel2: dx, wheel3: 0)?
-            .post(tap: .cghidEventTap)
-    }
-
-    private func postMouseMove(to point: CGPoint) {
-        let source = CGEventSource(stateID: .hidSystemState)
-        CGEvent(mouseEventSource: source, mouseType: .mouseMoved,
-                mouseCursorPosition: point, mouseButton: .left)?
             .post(tap: .cghidEventTap)
     }
 }
