@@ -38,7 +38,16 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 </plist>
 PLIST
 
-codesign --force --sign - "$APP"
+# Apple Development 인증서가 있으면 그걸로 서명 — 빌드가 바뀌어도 서명 identity가
+# 유지되어 손쉬운 사용(TCC) 권한이 재설치 후에도 풀리지 않는다. 없으면 ad-hoc.
+IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | grep "Apple Development" | head -1 | awk '{print $2}')
+if [ -n "${IDENTITY:-}" ]; then
+    codesign --force --sign "$IDENTITY" "$APP"
+    echo "서명: Apple Development ($IDENTITY)"
+else
+    codesign --force --sign - "$APP"
+    echo "서명: ad-hoc (재설치 시 손쉬운 사용 권한 재부여 필요)"
+fi
 
 echo "생성 완료: $APP"
 echo "실행: open $APP"
