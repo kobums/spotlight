@@ -1,7 +1,7 @@
 import AppKit
 
 /// 수식 계산 + 단위 변환. 결과는 Enter로 클립보드에 복사.
-final class CalculatorProvider {
+final class CalculatorProvider: SearchProvider {
 
     func results(for query: String) -> [SearchResult] {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
@@ -31,11 +31,9 @@ final class CalculatorProvider {
             title: text,
             subtitle: "\(original) — Enter로 복사",
             symbolName: "equal.circle.fill",
-            score: 1000, // 계산 결과는 항상 최상단
+            score: Score.calculator, // 계산 결과는 항상 최상단
             action: { _ in
-                let pb = NSPasteboard.general
-                pb.clearContents()
-                pb.setString(text, forType: .string)
+                ClipboardStore.shared.copy(text)
             }
         )
     }

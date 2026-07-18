@@ -2,7 +2,7 @@ import AppKit
 
 /// 시스템 액션: 잠자기, 화면 잠금, 휴지통 비우기, 다크 모드 등.
 /// 한글/영문 키워드 모두 fuzzy 매칭.
-final class SystemActionProvider {
+final class SystemActionProvider: SearchProvider {
 
     private struct Action {
         let id: String
@@ -96,7 +96,7 @@ final class SystemActionProvider {
                 title: action.title,
                 subtitle: "시스템 액션",
                 symbolName: action.symbol,
-                score: (best.isInfinite ? 50 : best) + 0.5,
+                score: (best.isInfinite ? Score.actionExact : best) + Score.actionBonus,
                 action: { _ in action.run() }
             ))
         }

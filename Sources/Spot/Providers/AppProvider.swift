@@ -1,7 +1,7 @@
 import AppKit
 
 /// 앱 목록 스캔 + fuzzy 매칭. 시작 시 스캔하고 5분마다 갱신.
-final class AppProvider {
+final class AppProvider: SearchProvider {
     private struct AppEntry {
         let name: String
         let localizedName: String
@@ -65,7 +65,7 @@ final class AppProvider {
                 kind: .app,
                 title: app.localizedName,
                 icon: NSWorkspace.shared.icon(forFile: url.path),
-                score: best.isInfinite ? 100 : best + 2.0, // 앱은 기본 가중치 우대
+                score: best.isInfinite ? Score.appExact : best + Score.appBonus,
                 action: { _ in
                     NSWorkspace.shared.openApplication(at: url, configuration: .init())
                 }

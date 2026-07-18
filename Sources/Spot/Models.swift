@@ -7,17 +7,6 @@ enum ResultKind {
     case clipboard
     case systemAction
     case webSearch
-
-    var label: String {
-        switch self {
-        case .app: return "앱"
-        case .file: return "파일"
-        case .calculator: return "계산"
-        case .clipboard: return "클립보드"
-        case .systemAction: return "액션"
-        case .webSearch: return "웹"
-        }
-    }
 }
 
 struct SearchResult: Identifiable {

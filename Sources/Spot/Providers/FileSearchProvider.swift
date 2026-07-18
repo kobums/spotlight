@@ -61,7 +61,7 @@ final class FileSearchProvider {
                     title: name,
                     subtitle: shortenPath(path),
                     icon: NSWorkspace.shared.icon(forFile: path),
-                    score: (fuzzy.isInfinite ? 3.0 : fuzzy) - 0.5, // 파일은 앱보다 낮게
+                    score: (fuzzy.isInfinite ? Score.fileExact : fuzzy) + Score.filePenalty,
                     action: { modifiers in
                         if modifiers.contains(.option) {
                             NSWorkspace.shared.activateFileViewerSelecting([url])

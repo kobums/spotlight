@@ -2,12 +2,14 @@ import Foundation
 
 /// 프로바이더 결과를 모아 fuzzy 점수 + frecency 부스트로 최종 랭킹.
 final class SearchEngine {
-    private let appProvider = AppProvider()
     private let fileProvider = FileSearchProvider()
-    private let calculatorProvider = CalculatorProvider()
     private let clipboardProvider = ClipboardProvider()
-    private let systemActionProvider = SystemActionProvider()
     private let webSearchProvider = WebSearchProvider()
+
+    /// 동기 프로바이더 — 나열 순서가 정렬 전 기본 순서
+    private lazy var syncProviders: [SearchProvider] = [
+        CalculatorProvider(), webSearchProvider, AppProvider(), SystemActionProvider(),
+    ]
 
     /// 파일 검색(비동기) 결과 콜백
     var onFileResults: (([SearchResult]) -> Void)? {
@@ -30,30 +32,11 @@ final class SearchEngine {
             return clipboardProvider.results(for: trimmed)
         }
 
-        var results: [SearchResult] = []
-        results += calculatorProvider.results(for: trimmed)
-        results += webSearchProvider.prefixResults(for: trimmed)
-        results += appProvider.results(for: trimmed)
-        results += systemActionProvider.results(for: trimmed)
-
-        // frecency 부스트 적용
-        for i in results.indices {
-            results[i].score += FrecencyStore.shared.boost(id: results[i].id) * 2.0
-        }
+        var results = syncProviders.flatMap { $0.results(for: trimmed) }
+        applyFrecencyBoost(to: &results)
         results.sort { $0.score > $1.score }
-
-        if let fallback = webSearchProvider.fallbackResult(for: trimmed),
-           !results.contains(where: { $0.kind == .webSearch }) {
-            results.append(fallback)
-        }
-
-        // 파일 검색은 백그라운드로 (클립보드/계산/웹 프리픽스 모드가 아닐 때만)
-        if results.first(where: { $0.kind == .calculator || ($0.kind == .webSearch && $0.score > 0) }) == nil {
-            fileProvider.search(trimmed)
-        } else {
-            fileProvider.search("")
-        }
-
+        appendWebFallbackIfNeeded(to: &results, query: trimmed)
+        triggerFileSearchIfNeeded(results, query: trimmed)
         return results
     }
 
@@ -62,9 +45,7 @@ final class SearchEngine {
         guard !fileResults.isEmpty else { return current }
         var merged = current.filter { $0.kind != .file }
         var files = fileResults
-        for i in files.indices {
-            files[i].score += FrecencyStore.shared.boost(id: files[i].id) * 2.0
-        }
+        applyFrecencyBoost(to: &files)
         // 웹 폴백은 항상 마지막 유지
         let fallback = merged.last(where: { $0.kind == .webSearch && $0.score < 0 })
         merged.removeAll { $0.kind == .webSearch && $0.score < 0 }
@@ -75,8 +56,28 @@ final class SearchEngine {
     }
 
     func recordSelection(_ result: SearchResult) {
-        // 계산 결과나 웹 폴백은 학습 대상에서 제외
+        // 계산 결과는 학습 대상에서 제외
         guard result.kind != .calculator else { return }
         FrecencyStore.shared.recordSelection(id: result.id)
+    }
+
+    // MARK: - 단계
+
+    private func applyFrecencyBoost(to results: inout [SearchResult]) {
+        for i in results.indices {
+            results[i].score += FrecencyStore.shared.boost(id: results[i].id) * Score.frecencyWeight
+        }
+    }
+
+    private func appendWebFallbackIfNeeded(to results: inout [SearchResult], query: String) {
+        guard let fallback = webSearchProvider.fallbackResult(for: query),
+              !results.contains(where: { $0.kind == .webSearch }) else { return }
+        results.append(fallback)
+    }
+
+    /// 계산/웹 프리픽스 모드에서는 파일 검색이 소음이라 중단
+    private func triggerFileSearchIfNeeded(_ results: [SearchResult], query: String) {
+        let suppressed = results.contains { $0.kind == .calculator || ($0.kind == .webSearch && $0.score > 0) }
+        fileProvider.search(suppressed ? "" : query)
     }
 }

@@ -5,27 +5,20 @@ final class FrecencyStore {
     static let shared = FrecencyStore()
 
     private var timestamps: [String: [TimeInterval]] = [:]
-    private let fileURL: URL
-    private var saveWorkItem: DispatchWorkItem?
+    private let store = JSONFileStore<[String: [TimeInterval]]>(filename: "frecency.json", saveDelay: 1.0)
     private let halfLife: TimeInterval = 7 * 24 * 3600
+    private let maxTimestampsPerID = 50
 
     private init() {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Spot", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        fileURL = dir.appendingPathComponent("frecency.json")
-        if let data = try? Data(contentsOf: fileURL),
-           let decoded = try? JSONDecoder().decode([String: [TimeInterval]].self, from: data) {
-            timestamps = decoded
-        }
+        timestamps = store.load() ?? [:]
     }
 
     func recordSelection(id: String) {
         var list = timestamps[id] ?? []
         list.append(Date().timeIntervalSince1970)
-        if list.count > 50 { list.removeFirst(list.count - 50) }
+        if list.count > maxTimestampsPerID { list.removeFirst(list.count - maxTimestampsPerID) }
         timestamps[id] = list
-        scheduleSave()
+        store.scheduleSave(timestamps)
     }
 
     /// 0 이상. 방금 선택했으면 1점, 시간이 지날수록 감쇠.
@@ -35,17 +28,5 @@ final class FrecencyStore {
         return list.reduce(0) { acc, t in
             acc + pow(2, -(now - t) / halfLife)
         }
-    }
-
-    private func scheduleSave() {
-        saveWorkItem?.cancel()
-        let item = DispatchWorkItem { [weak self] in
-            guard let self else { return }
-            if let data = try? JSONEncoder().encode(self.timestamps) {
-                try? data.write(to: self.fileURL)
-            }
-        }
-        saveWorkItem = item
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: item)
     }
 }

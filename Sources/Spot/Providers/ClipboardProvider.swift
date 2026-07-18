@@ -2,7 +2,7 @@ import AppKit
 
 /// "cb" 또는 "클립" 키워드로 진입하는 클립보드 히스토리 검색.
 /// Enter → 클립보드에 복사 (+ 손쉬운 사용 권한이 있으면 자동 붙여넣기)
-final class ClipboardProvider {
+final class ClipboardProvider: SearchProvider {
 
     static func isClipboardQuery(_ query: String) -> Bool {
         let q = query.lowercased()
@@ -45,9 +45,9 @@ final class ClipboardProvider {
                 title: title,
                 subtitle: formatter.localizedString(for: entry.date, relativeTo: Date()),
                 symbolName: "doc.on.clipboard",
-                score: 500 - Double(index), // 최신순 유지
+                score: Score.clipboardTop - Double(index), // 최신순 유지
                 action: { modifiers in
-                    ClipboardStore.shared.copyToPasteboard(entry.text)
+                    ClipboardStore.shared.copy(entry.text)
                     if !modifiers.contains(.option) {
                         Paster.pasteToFrontmostApp()
                     }

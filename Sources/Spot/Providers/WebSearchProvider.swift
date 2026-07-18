@@ -2,7 +2,7 @@ import AppKit
 
 /// 웹 검색 키워드: "g 검색어"(구글), "yt"(유튜브), "gh"(깃허브), "nv"(네이버).
 /// 매칭 결과가 없으면 항상 마지막에 구글 검색 폴백 제공.
-final class WebSearchProvider {
+final class WebSearchProvider: SearchProvider {
 
     private struct Engine {
         let prefix: String
@@ -19,12 +19,12 @@ final class WebSearchProvider {
     ]
 
     /// 접두사 매치 시 상단 노출용 결과
-    func prefixResults(for query: String) -> [SearchResult] {
+    func results(for query: String) -> [SearchResult] {
         for engine in engines {
             let p = engine.prefix + " "
             guard query.lowercased().hasPrefix(p), query.count > p.count else { continue }
             let term = String(query.dropFirst(p.count))
-            return [makeResult(engine: engine, term: term, score: 900)]
+            return [makeResult(engine: engine, term: term, score: Score.webPrefix)]
         }
         return []
     }
@@ -33,7 +33,7 @@ final class WebSearchProvider {
     func fallbackResult(for query: String) -> SearchResult? {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return nil }
-        return makeResult(engine: engines[0], term: trimmed, score: -1000)
+        return makeResult(engine: engines[0], term: trimmed, score: Score.webFallback)
     }
 
     private func makeResult(engine: Engine, term: String, score: Double) -> SearchResult {
