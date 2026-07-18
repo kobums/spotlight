@@ -5,7 +5,6 @@ import ApplicationServices
 struct HintTarget {
     let element: AXUIElement
     let role: String
-    let title: String
     /// CG(주 화면 좌상단 원점) 전역 좌표
     let frame: CGRect
 }
@@ -62,17 +61,17 @@ enum HintTargetCollector {
         var visited = 0
         var primaryWindowFrame: CGRect?
 
-        func append(_ element: AXUIElement, role: String, title: String?, frame: CGRect) {
+        func append(_ element: AXUIElement, role: String, frame: CGRect) {
             let key = "\(Int(frame.midX)),\(Int(frame.midY))"
             guard !seenCenters.contains(key) else { return }
             seenCenters.insert(key)
-            targets.append(HintTarget(element: element, role: role, title: title ?? "", frame: frame))
+            targets.append(HintTarget(element: element, role: role, frame: frame))
         }
 
         func walk(_ element: AXUIElement, clip: CGRect, depth: Int) {
             guard depth < maxDepth, visited < maxVisited, targets.count < maxTargets else { return }
             visited += 1
-            let (role, title, frame, children) = fetchAttributes(element)
+            let (role, frame, children) = fetchAttributes(element)
 
             // 유효한 크기인데 클립 영역과 안 겹치면 스크롤 밖 서브트리 — 가지치기
             if let frame, frame.width > 1, frame.height > 1, !frame.intersects(clip) { return }
@@ -81,7 +80,7 @@ enum HintTargetCollector {
                actionableRoles.contains(role),
                frame.width > 2, frame.height > 2,
                clip.contains(CGPoint(x: frame.midX, y: frame.midY)) {
-                append(element, role: role, title: title, frame: frame)
+                append(element, role: role, frame: frame)
             }
 
             // 닫힌 메뉴 아래로는 내려가지 않는다
@@ -94,12 +93,12 @@ enum HintTargetCollector {
         // 메뉴 막대 항목
         var menuBarRef: CFTypeRef?
         if AXUIElementCopyAttributeValue(appElement, kAXMenuBarAttribute as CFString, &menuBarRef) == .success,
-           let menuBarRef, CFGetTypeID(menuBarRef) == AXUIElementGetTypeID() {
-            let (_, _, _, items) = fetchAttributes(menuBarRef as! AXUIElement)
+           let menuBar = axElement(menuBarRef) {
+            let (_, _, items) = fetchAttributes(menuBar)
             for item in items {
-                let (role, title, frame, _) = fetchAttributes(item)
+                let (role, frame, _) = fetchAttributes(item)
                 if let frame, role == "AXMenuBarItem", frame.width > 2 {
-                    append(item, role: "AXMenuBarItem", title: title, frame: frame)
+                    append(item, role: "AXMenuBarItem", frame: frame)
                 }
             }
         }
@@ -115,7 +114,7 @@ enum HintTargetCollector {
             if AXUIElementCopyAttributeValue(window, kAXMinimizedAttribute as CFString, &minimizedRef) == .success,
                (minimizedRef as? Bool) == true { continue }
 
-            let (_, _, windowFrame, _) = fetchAttributes(window)
+            let (_, windowFrame, _) = fetchAttributes(window)
             guard let windowFrame, windowFrame.width > 1, windowFrame.height > 1 else { continue }
             if primaryWindowFrame == nil { primaryWindowFrame = windowFrame }
             walk(window, clip: windowFrame, depth: 0)
@@ -123,34 +122,37 @@ enum HintTargetCollector {
         return (targets, primaryWindowFrame)
     }
 
-    /// 요소 하나당 IPC 1회로 role·title·frame·children을 한 번에 읽는다.
+    /// 요소 하나당 IPC 1회로 role·frame·children을 한 번에 읽는다.
     private static func fetchAttributes(_ element: AXUIElement)
-        -> (role: String?, title: String?, frame: CGRect?, children: [AXUIElement]) {
+        -> (role: String?, frame: CGRect?, children: [AXUIElement]) {
         var valuesRef: CFArray?
         let attributes = [
-            kAXRoleAttribute, kAXTitleAttribute,
-            kAXPositionAttribute, kAXSizeAttribute, kAXChildrenAttribute,
+            kAXRoleAttribute, kAXPositionAttribute, kAXSizeAttribute, kAXChildrenAttribute,
         ] as CFArray
         guard AXUIElementCopyMultipleAttributeValues(element, attributes, AXCopyMultipleAttributeOptions(rawValue: 0), &valuesRef) == .success,
-              let values = valuesRef as? [AnyObject], values.count == 5 else {
-            return (nil, nil, nil, [])
+              let values = valuesRef as? [AnyObject], values.count == 4 else {
+            return (nil, nil, [])
         }
 
         let role = values[0] as? String
-        let title = values[1] as? String
         var frame: CGRect?
-        if let origin = axPoint(values[2]), let size = axSize(values[3]) {
+        if let origin = axPoint(values[1]), let size = axSize(values[2]) {
             frame = CGRect(origin: origin, size: size)
         }
 
         var children: [AXUIElement] = []
-        if CFGetTypeID(values[4]) == CFArrayGetTypeID(), let array = values[4] as? [AnyObject] {
-            children = array.compactMap { child in
-                guard CFGetTypeID(child) == AXUIElementGetTypeID() else { return nil }
-                return (child as! AXUIElement)
-            }
+        if CFGetTypeID(values[3]) == CFArrayGetTypeID(), let array = values[3] as? [AnyObject] {
+            children = array.compactMap(axElement)
         }
-        return (role, title, frame, children)
+        return (role, frame, children)
+    }
+
+    // MARK: - CF 타입 안전 캐스트
+
+    /// CFTypeID 확인 후 캐스트 — AX API가 돌려주는 CFTypeRef를 안전하게 다루는 유일한 경로
+    private static func axElement(_ value: AnyObject?) -> AXUIElement? {
+        guard let value, CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
+        return (value as! AXUIElement)
     }
 
     private static func axPoint(_ value: AnyObject?) -> CGPoint? {
