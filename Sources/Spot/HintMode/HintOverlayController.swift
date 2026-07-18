@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import SwiftUI
 
 struct Hint: Identifiable {
@@ -88,6 +89,18 @@ final class HintOverlayController: NSObject, NSWindowDelegate {
 
     // MARK: - 키 입력
 
+    /// 물리 키 위치 → 라벨 문자. 한글 등 어떤 입력 소스가 켜져 있어도
+    /// charactersIgnoringModifiers는 자모("ㅁ")를 돌려주므로 keyCode로 매핑한다.
+    private static let letterForKeyCode: [Int: Character] = [
+        kVK_ANSI_A: "A", kVK_ANSI_B: "B", kVK_ANSI_C: "C", kVK_ANSI_D: "D",
+        kVK_ANSI_E: "E", kVK_ANSI_F: "F", kVK_ANSI_G: "G", kVK_ANSI_H: "H",
+        kVK_ANSI_I: "I", kVK_ANSI_J: "J", kVK_ANSI_K: "K", kVK_ANSI_L: "L",
+        kVK_ANSI_M: "M", kVK_ANSI_N: "N", kVK_ANSI_O: "O", kVK_ANSI_P: "P",
+        kVK_ANSI_Q: "Q", kVK_ANSI_R: "R", kVK_ANSI_S: "S", kVK_ANSI_T: "T",
+        kVK_ANSI_U: "U", kVK_ANSI_V: "V", kVK_ANSI_W: "W", kVK_ANSI_X: "X",
+        kVK_ANSI_Y: "Y", kVK_ANSI_Z: "Z",
+    ]
+
     private func handle(_ event: NSEvent) -> NSEvent? {
         switch Int(event.keyCode) {
         case 53: // Esc
@@ -100,12 +113,9 @@ final class HintOverlayController: NSObject, NSWindowDelegate {
             break
         }
 
-        guard let characters = event.charactersIgnoringModifiers?.uppercased(),
-              characters.count == 1, characters.first!.isLetter else {
-            return nil
-        }
+        guard let letter = Self.letterForKeyCode[Int(event.keyCode)] else { return nil }
 
-        let candidate = model.typed + characters
+        let candidate = model.typed + String(letter)
         let matches = model.hints.filter { $0.label.hasPrefix(candidate) }
         if matches.count == 1, matches[0].label == candidate {
             let target = matches[0].target
