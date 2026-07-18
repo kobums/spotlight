@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var panelController: PanelController!
     private var hintModeController: HintModeController!
     private var loginMenuItem: NSMenuItem!
+    private var awakeMenuItem: NSMenuItem!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         panelController = PanelController()
@@ -23,6 +24,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let hintItem = NSMenuItem(title: "힌트 모드 (⌃Space)", action: #selector(toggleHintMode), keyEquivalent: "")
         hintItem.target = self
         menu.addItem(hintItem)
+        awakeMenuItem = NSMenuItem(title: "깨어있기 시작", action: #selector(toggleAwake), keyEquivalent: "")
+        awakeMenuItem.target = self
+        menu.addItem(awakeMenuItem)
         menu.addItem(.separator())
         loginMenuItem = NSMenuItem(title: "로그인 시 자동 실행", action: #selector(toggleLoginItem), keyEquivalent: "")
         loginMenuItem.target = self
@@ -41,10 +45,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         ClipboardStore.shared.startMonitoring()
         LoginItemManager.ensureRegisteredOnFirstLaunch()
+
+        AwakeSessionManager.shared.onChange = { [weak self] in
+            self?.updateStatusIcon()
+        }
     }
 
     func menuWillOpen(_ menu: NSMenu) {
         loginMenuItem.state = LoginItemManager.isEnabled ? .on : .off
+        if let state = AwakeSessionManager.shared.stateDescription {
+            awakeMenuItem.title = "깨어있기 해제 (\(state))"
+            awakeMenuItem.state = .on
+        } else {
+            awakeMenuItem.title = "깨어있기 시작"
+            awakeMenuItem.state = .off
+        }
+    }
+
+    /// 깨어있기 세션 중에는 메뉴바 아이콘을 컵으로 바꿔 상태를 드러낸다
+    private func updateStatusIcon() {
+        let symbol = AwakeSessionManager.shared.isActive ? "cup.and.saucer.fill" : "sparkle.magnifyingglass"
+        statusItem.button?.image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Spot")
     }
 
     @objc private func togglePanel() {
@@ -57,5 +78,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func toggleLoginItem() {
         LoginItemManager.toggle()
+    }
+
+    @objc private func toggleAwake() {
+        let manager = AwakeSessionManager.shared
+        manager.isActive ? manager.end() : manager.start(duration: nil)
     }
 }
