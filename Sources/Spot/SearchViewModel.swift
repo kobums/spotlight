@@ -11,6 +11,11 @@ final class SearchViewModel: ObservableObject {
     var onDismiss: (() -> Void)?
 
     init() {
+        engine.onElementResults = { [weak self] elementResults in
+            guard let self, UIElementProvider.isElementQuery(self.query) else { return }
+            self.results = elementResults
+            self.selectedIndex = 0
+        }
         engine.onFileResults = { [weak self] fileResults in
             guard let self else { return }
             let selectedID = self.results.indices.contains(self.selectedIndex)

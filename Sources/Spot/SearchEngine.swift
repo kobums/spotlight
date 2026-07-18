@@ -5,6 +5,7 @@ final class SearchEngine {
     private let fileProvider = FileSearchProvider()
     private let clipboardProvider = ClipboardProvider()
     private let webSearchProvider = WebSearchProvider()
+    private let elementProvider = UIElementProvider()
 
     /// 동기 프로바이더 — 나열 순서가 정렬 전 기본 순서
     private lazy var syncProviders: [SearchProvider] = [
@@ -15,6 +16,12 @@ final class SearchEngine {
     var onFileResults: (([SearchResult]) -> Void)? {
         get { fileProvider.onResults }
         set { fileProvider.onResults = newValue }
+    }
+
+    /// UI 요소 검색(비동기) 결과 콜백 — 전용 모드라 기존 결과를 통째로 교체
+    var onElementResults: (([SearchResult]) -> Void)? {
+        get { elementProvider.onResults }
+        set { elementProvider.onResults = newValue }
     }
 
     /// 동기 프로바이더 결과 (즉시 표시)
@@ -30,6 +37,13 @@ final class SearchEngine {
         if ClipboardProvider.isClipboardQuery(trimmed) {
             fileProvider.search("")
             return clipboardProvider.results(for: trimmed)
+        }
+
+        // UI 요소 모드(";")도 전용 — 결과는 onElementResults 콜백으로
+        if UIElementProvider.isElementQuery(trimmed) {
+            fileProvider.search("")
+            elementProvider.search(trimmed)
+            return []
         }
 
         var results = syncProviders.flatMap { $0.results(for: trimmed) }
@@ -56,8 +70,8 @@ final class SearchEngine {
     }
 
     func recordSelection(_ result: SearchResult) {
-        // 계산 결과는 학습 대상에서 제외
-        guard result.kind != .calculator else { return }
+        // 계산 결과와 UI 요소(좌표 기반 id라 재현 안 됨)는 학습 대상에서 제외
+        guard result.kind != .calculator, result.kind != .uiElement else { return }
         FrecencyStore.shared.recordSelection(id: result.id)
     }
 

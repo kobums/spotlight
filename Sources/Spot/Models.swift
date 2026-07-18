@@ -7,6 +7,7 @@ enum ResultKind {
     case clipboard
     case systemAction
     case webSearch
+    case uiElement
 }
 
 struct SearchResult: Identifiable {
