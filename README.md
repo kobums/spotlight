@@ -9,12 +9,12 @@
 # 개발 실행
 swift run
 
-# 앱 번들 생성 (메뉴바 상주 앱)
-./scripts/make-app.sh
-open build/Spot.app
+# 설치 (빌드 → /Applications 복사 → 실행)
+./scripts/install.sh
 ```
 
-로그인 시 자동 실행: 시스템 설정 → 일반 → 로그인 항목에 `Spot.app` 추가.
+첫 실행 시 로그인 항목에 자동 등록되어 재시동 후에도 실행된다.
+끄고 싶으면 메뉴바 아이콘 → "로그인 시 자동 실행" 토글.
 
 ## 사용법
 
