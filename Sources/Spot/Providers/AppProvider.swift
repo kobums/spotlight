@@ -64,7 +64,6 @@ final class AppProvider {
                 id: "app:\(url.path)",
                 kind: .app,
                 title: app.localizedName,
-                subtitle: url.path,
                 icon: NSWorkspace.shared.icon(forFile: url.path),
                 score: best.isInfinite ? 100 : best + 2.0, // 앱은 기본 가중치 우대
                 action: { _ in
@@ -90,7 +89,6 @@ final class AppProvider {
                     id: "app:\(url.path)",
                     kind: .app,
                     title: entry.localizedName,
-                    subtitle: url.path,
                     icon: NSWorkspace.shared.icon(forFile: url.path),
                     score: boost,
                     action: { _ in
