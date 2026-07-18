@@ -74,27 +74,4 @@ final class AppProvider {
         return out
     }
 
-    /// 빈 쿼리일 때 보여줄 자주 쓰는 앱
-    func frequentApps(limit: Int) -> [SearchResult] {
-        let scored = apps.map { app -> (AppEntry, Double) in
-            (app, FrecencyStore.shared.boost(id: "app:\(app.url.path)"))
-        }
-        return scored
-            .filter { $0.1 > 0 }
-            .sorted { $0.1 > $1.1 }
-            .prefix(limit)
-            .map { entry, boost in
-                let url = entry.url
-                return SearchResult(
-                    id: "app:\(url.path)",
-                    kind: .app,
-                    title: entry.localizedName,
-                    icon: NSWorkspace.shared.icon(forFile: url.path),
-                    score: boost,
-                    action: { _ in
-                        NSWorkspace.shared.openApplication(at: url, configuration: .init())
-                    }
-                )
-            }
-    }
 }

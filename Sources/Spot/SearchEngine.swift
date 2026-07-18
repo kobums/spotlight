@@ -21,7 +21,7 @@ final class SearchEngine {
 
         guard !trimmed.isEmpty else {
             fileProvider.search("")
-            return appProvider.frequentApps(limit: 8)
+            return []
         }
 
         // 클립보드 모드는 전용 결과만
