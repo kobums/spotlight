@@ -27,6 +27,9 @@ final class HintOverlayController: NSObject, NSWindowDelegate {
     private var keyMonitor: Any?
     private var onSelect: ((HintTarget) -> Void)?
 
+    /// Tab으로 스크롤 모드 전환
+    var onSwitchToScrollMode: (() -> Void)?
+
     var isVisible: Bool { panel?.isVisible ?? false }
 
     func show(targets: [HintTarget], on screen: NSScreen, onSelect: @escaping (HintTarget) -> Void) {
@@ -103,11 +106,14 @@ final class HintOverlayController: NSObject, NSWindowDelegate {
 
     private func handle(_ event: NSEvent) -> NSEvent? {
         switch Int(event.keyCode) {
-        case 53: // Esc
+        case kVK_Escape:
             cancel()
             return nil
-        case 51: // Delete
+        case kVK_Delete:
             if !model.typed.isEmpty { model.typed.removeLast() }
+            return nil
+        case kVK_Tab:
+            onSwitchToScrollMode?()
             return nil
         default:
             break

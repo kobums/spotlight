@@ -39,6 +39,17 @@ enum HintTargetCollector {
         return frontmost
     }
 
+    /// 최전면 앱 포커스 창의 프레임 (CG 좌표). 스크롤 모드의 포인터 이동 목표.
+    static func focusedWindowFrame() -> CGRect? {
+        guard let app = frontmostApp() else { return nil }
+        let appElement = AXUIElementCreateApplication(app.processIdentifier)
+        var windowRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &windowRef) == .success,
+              let window = axElement(windowRef) else { return nil }
+        let (_, _, frame, _) = fetchAttributes(window)
+        return frame
+    }
+
     static func collectFrontmost() -> HintCollection? {
         guard let app = frontmostApp() else { return nil }
         let appElement = AXUIElementCreateApplication(app.processIdentifier)
