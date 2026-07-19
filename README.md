@@ -89,4 +89,6 @@ Sources/Spot/
     ├── ClipboardProvider / SystemActionProvider / WebSearchProvider
     ├── UIElementProvider.swift           #   ";" UI 요소 검색
     └── AwakeProvider.swift               #   깨어있기 세션
+
+assets/AppIcon.icns                       # 앱 아이콘 (scripts/make-icon.swift로 생성)
 ```
