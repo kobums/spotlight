@@ -44,6 +44,7 @@ swift run
 | 보이는 요소 클릭 | **⌃Space** → 노란 라벨 타이핑 (힌트 모드) |
 | 스크롤 | 힌트 모드에서 **⌃Space** 또는 **Tab** → HJKL |
 | 접근성 정보 없는 앱 | 힌트 모드에서 **`/`** → 3×3 그리드 (수집 실패 시 자동 폴백) |
+| 창 배치 (Rectangle 방식) | 힌트 모드에서 **`.`** → HJKL 절반·YUBN 코너·M 최대화·R 복원 |
 | 이름 아는 요소 | ⌥Space → `;이름` → Enter |
 
 ### 키 리맵 — Karabiner-Elements 대체
@@ -88,6 +89,9 @@ Sources/Spot/
 │   ├── HintOverlayController.swift       #   라벨 오버레이 + 키 입력
 │   ├── ScrollModeController.swift        #   HJKL 스크롤 + HUD
 │   ├── GridModeController.swift          #   3×3 그리드 (warpd 방식)
+│   ├── WindowModeController.swift        #   창 모드 HUD (Rectangle 방식)
+│   ├── WindowManager.swift               #   창 프레임 계산·AX 적용·복원
+
 │   ├── HintActionPerformer.swift         #   AXPress·클릭·커서 이동 합성
 │   └── HintLabeler / ScreenCoords / AccessibilityPermission
 └── Providers/                            # SearchProvider 구현들

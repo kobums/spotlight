@@ -121,9 +121,21 @@ SwiftUI 오버레이는 좌상단 원점이라 CG 좌표에서 화면 원점만 
 ### 모드 전환 (`HintModeController`)
 
 ```
-⌃Space: 그리드 켜져 있으면 끔 → 스크롤 켜져 있으면 끔 → 힌트 켜져 있으면 스크롤로 → 아니면 힌트 시작
-힌트에서 Tab → 스크롤, "/" → 그리드, 수집 결과 없음 → 그리드 자동 폴백
+⌃Space: 창/그리드/스크롤 켜져 있으면 끔 → 힌트 켜져 있으면 스크롤로 → 아니면 힌트 시작
+힌트에서 Tab → 스크롤, "/" → 그리드, "." → 창 모드, 수집 결과 없음 → 그리드 자동 폴백
 ```
+
+### 창 배치 (`WindowManager` / `WindowModeController`)
+
+Rectangle 방식 — 포커스 창의 `kAXPositionAttribute`/`kAXSizeAttribute`를 set.
+프레임 계산은 `NSScreen.visibleFrame`(메뉴바·Dock 제외) 기준, 대상 화면은 창과 교집합이 가장 큰 화면.
+
+- **`AXEnhancedUserInterface` 임시 해제**: 힌트 모드가 Electron 앱에 켜는 이 플래그는 AX 창 이동을
+  애니메이션시켜 위치를 어긋나게 한다 — 이동 동안만 끄고 복구
+- **position→size 두 번 적용**: 앱 최소 크기 클램프·화면 경계 걸침 대응 (Rectangle과 동일)
+- **사이클 판정**: 현재 프레임이 ½·⅔·⅓ 후보와 오차 5px 내로 일치하면 다음 단계 적용
+- **복원**: 창별 첫 스냅 직전 프레임을 (AXUIElement, frame) 목록에 저장 (CFEqual 비교, 최근 20개)
+- 상세 설계·조사 배경: [window-management.md](window-management.md)
 
 ---
 

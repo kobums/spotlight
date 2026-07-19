@@ -31,6 +31,8 @@ final class HintOverlayController: NSObject, NSWindowDelegate {
     var onSwitchToScrollMode: (() -> Void)?
     /// "/"로 그리드 모드 전환
     var onSwitchToGridMode: (() -> Void)?
+    /// "."로 창 모드 전환
+    var onSwitchToWindowMode: (() -> Void)?
 
     var isVisible: Bool { panel?.isVisible ?? false }
 
@@ -119,6 +121,9 @@ final class HintOverlayController: NSObject, NSWindowDelegate {
             return nil
         case kVK_ANSI_Slash:
             onSwitchToGridMode?()
+            return nil
+        case kVK_ANSI_Period:
+            onSwitchToWindowMode?()
             return nil
         default:
             break
