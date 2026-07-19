@@ -10,6 +10,7 @@ Spot은 개인용 macOS 런처(⌥Space) + 키보드 화면 접근 도구(⌃Spa
 | [features.md](features.md) | 사용자 | 전체 기능 상세 — 런처의 9개 검색 모드, 키보드 화면 접근 3개 모드의 키맵과 동작 |
 | [architecture.md](architecture.md) | 개발자 | 코드 구조와 구현 방식 — 검색 파이프라인, 접근성 API 활용, 좌표계, 한글 IME 대응, 권한·서명, 트러블슈팅 |
 | [research.md](research.md) | 설계 배경 | 개발 전 조사 — 기존 런처(Raycast/Alfred/LaunchBar…)와 키보드 접근 앱(Homerow/Shortcat/warpd…) 분석 |
+| [window-management.md](window-management.md) | 설계 배경 | 창 관리(Rectangle 대체) 조사·설계 — 채택 범위, 창 모드 키맵, AX 창 이동 함정 |
 
 ## 구현 연혁 요약
 
