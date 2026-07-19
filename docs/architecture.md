@@ -136,6 +136,22 @@ SwiftUI 오버레이는 좌상단 원점이라 CG 좌표에서 화면 원점만 
 
 ---
 
+## 키 리맵 (`KeyRemapManager`)
+
+카라비너 Simple Modifications 대체. `hidutil property --set '{"UserKeyMapping":[...]}'` 호출로
+macOS 내장 HID 드라이버 레벨 리맵을 설정한다 (우측⌘→F18, Caps→좌⌃).
+
+- **권한 불필요** — CGEventTap이 아니라서 입력 모니터링도, 손쉬운 사용도 필요 없다.
+  드라이버 레벨이라 지연이 없고 보안 입력 중에도 동작
+- 매핑은 시스템 속성 — Spot이 죽어도 유지, 대신 **재부팅·Bluetooth 재연결 시 초기화**될 수 있다
+  → IOHIDManager 키보드 매칭 콜백(장치 열람만, 입력은 안 읽음) + `NSWorkspace.didWakeNotification`에서
+  0.5초 디바운스 후 재적용
+- caps→⌃를 기기 구분 없이 전역 적용하는 이유: HHKB는 그 위치가 하드웨어 Control이라
+  caps_lock 자체를 보내지 않는다. 기기별 매핑(`--matching`)은 같은 기기에 두 번 set하면
+  병합이 아니라 **교체**라 관리가 복잡해져 전역 하나로 통일
+- 주의: Karabiner가 실행 중이면 실제 기기를 독점(seize)하고 가상 키보드로 재전송하므로
+  hidutil 매핑은 가상 키보드 쪽에 적용된다. 동작은 같지만 카라비너 제거가 최종 상태
+
 ## 권한과 서명
 
 ### 권한 지도

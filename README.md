@@ -46,11 +46,16 @@ swift run
 | 접근성 정보 없는 앱 | 힌트 모드에서 **`/`** → 3×3 그리드 (수집 실패 시 자동 폴백) |
 | 이름 아는 요소 | ⌥Space → `;이름` → Enter |
 
+### 키 리맵 — Karabiner-Elements 대체
+
+우측⌘→F18(한/영 전환), Caps Lock→좌⌃. macOS 내장 hidutil 리맵이라 권한 불필요.
+메뉴바 → "키 리맵"으로 켜고 끈다.
+
 상세 키맵과 각 기능 설명은 [docs/features.md](docs/features.md) 참조.
 
 ## 권한
 
-- 기본 기능(런처·계산·클립보드 복사·awake)은 **권한 불필요**
+- 기본 기능(런처·계산·클립보드 복사·awake·키 리맵)은 **권한 불필요**
 - 힌트/스크롤/그리드 모드, UI 요소 검색, 클립보드 자동 붙여넣기는 **손쉬운 사용(Accessibility)** 권한 필요
   — 첫 사용 시 시스템 프롬프트로 안내된다. 문제가 생기면 [docs/architecture.md의 권한·서명 절](docs/architecture.md#권한과-서명) 참조
 
@@ -75,6 +80,7 @@ Sources/Spot/
 ├── Models / Ranking / FuzzyMatch         # 결과 모델·점수 상수·fzy 매칭+한글 초성
 ├── FrecencyStore / ClipboardStore / JSONFileStore   # 학습·히스토리·영속화
 ├── AwakeSessionManager.swift             # 잠자기 방지 (IOPMAssertion)
+├── KeyRemapManager.swift                 # 키 리맵 (hidutil, 카라비너 대체)
 ├── LoginItemManager.swift                # 로그인 항목 (SMAppService)
 ├── HintMode/                             # 키보드 화면 접근
 │   ├── HintModeController.swift          #   모드 오케스트레이터 (힌트→스크롤→그리드)

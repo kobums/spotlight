@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var hintModeController: HintModeController!
     private var loginMenuItem: NSMenuItem!
     private var awakeMenuItem: NSMenuItem!
+    private var keyRemapMenuItem: NSMenuItem!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         panelController = PanelController()
@@ -27,6 +28,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         awakeMenuItem = NSMenuItem(title: "깨어있기 시작", action: #selector(toggleAwake), keyEquivalent: "")
         awakeMenuItem.target = self
         menu.addItem(awakeMenuItem)
+        keyRemapMenuItem = NSMenuItem(title: "키 리맵 (우측⌘ 한/영 · Caps→⌃)", action: #selector(toggleKeyRemap), keyEquivalent: "")
+        keyRemapMenuItem.target = self
+        menu.addItem(keyRemapMenuItem)
         menu.addItem(.separator())
         loginMenuItem = NSMenuItem(title: "로그인 시 자동 실행", action: #selector(toggleLoginItem), keyEquivalent: "")
         loginMenuItem.target = self
@@ -45,6 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         ClipboardStore.shared.startMonitoring()
         LoginItemManager.ensureRegisteredOnFirstLaunch()
+        KeyRemapManager.shared.start()
 
         AwakeSessionManager.shared.onChange = { [weak self] in
             self?.updateStatusIcon()
@@ -60,6 +65,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             awakeMenuItem.title = "깨어있기 시작"
             awakeMenuItem.state = .off
         }
+        keyRemapMenuItem.state = KeyRemapManager.shared.isEnabled ? .on : .off
     }
 
     /// 깨어있기 세션 중에는 메뉴바 아이콘을 컵으로 바꿔 상태를 드러낸다
@@ -78,6 +84,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func toggleLoginItem() {
         LoginItemManager.toggle()
+    }
+
+    @objc private func toggleKeyRemap() {
+        KeyRemapManager.shared.setEnabled(!KeyRemapManager.shared.isEnabled)
     }
 
     @objc private func toggleAwake() {
