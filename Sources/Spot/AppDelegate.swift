@@ -105,8 +105,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             (.windowRestore, kVK_Delete, controlKey | optionKey, .restore),         // ⌃⌥⌫
             (.windowSmaller, kVK_LeftArrow, controlKey | optionKey | shiftKey, .smaller),  // ⌃⌥⇧←
             (.windowLarger, kVK_RightArrow, controlKey | optionKey | shiftKey, .larger),   // ⌃⌥⇧→
-            (.windowNextDisplay, kVK_RightArrow, controlKey | optionKey | cmdKey, .nextDisplay),     // ⌃⌥⌘→
-            (.windowPrevDisplay, kVK_LeftArrow, controlKey | optionKey | cmdKey, .previousDisplay),  // ⌃⌥⌘←
+            (.windowNextDisplay, kVK_RightArrow, optionKey | shiftKey | cmdKey, .nextDisplay),     // ⌥⇧⌘→
+            (.windowPrevDisplay, kVK_LeftArrow, optionKey | shiftKey | cmdKey, .previousDisplay),  // ⌥⇧⌘←
         ]
         for (id, keyCode, modifiers, action) in bindings {
             HotKeyManager.shared.register(id, keyCode: keyCode, modifiers: modifiers) {
