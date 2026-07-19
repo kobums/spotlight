@@ -2,12 +2,34 @@ import AppKit
 import ApplicationServices
 
 /// 창 모드·전역 단축키에서 실행하는 창 배치 액션.
-enum WindowAction {
+/// rawValue는 설정 파일의 단축키 키로 쓰이므로 바꾸면 기존 설정과 호환이 깨진다.
+enum WindowAction: String, CaseIterable, Codable {
     case leftHalf, rightHalf, topHalf, bottomHalf
     case topLeft, topRight, bottomLeft, bottomRight
     case maximize, maximizeHeight, center, restore
     case smaller, larger
     case nextDisplay, previousDisplay
+
+    var displayName: String {
+        switch self {
+        case .leftHalf: return "왼쪽 절반"
+        case .rightHalf: return "오른쪽 절반"
+        case .topHalf: return "위쪽 절반"
+        case .bottomHalf: return "아래쪽 절반"
+        case .topLeft: return "왼쪽 위"
+        case .topRight: return "오른쪽 위"
+        case .bottomLeft: return "왼쪽 아래"
+        case .bottomRight: return "오른쪽 아래"
+        case .maximize: return "최대화"
+        case .maximizeHeight: return "높이 최대화"
+        case .center: return "가운데"
+        case .restore: return "복원"
+        case .smaller: return "작게"
+        case .larger: return "크게"
+        case .nextDisplay: return "다음 디스플레이"
+        case .previousDisplay: return "이전 디스플레이"
+        }
+    }
 }
 
 /// 최전면 창의 프레임을 계산해 AX로 적용한다 (Rectangle 방식).
@@ -15,8 +37,6 @@ enum WindowAction {
 final class WindowManager {
     static let shared = WindowManager()
 
-    /// 절반 액션의 같은 키 반복 사이클: ½ → ⅔ → ⅓
-    private static let cycleFractions: [CGFloat] = [1 / 2, 2 / 3, 1 / 3]
     /// 현재 프레임과 후보 프레임의 일치 판정 허용 오차 (px)
     private static let tolerance: CGFloat = 5
 
@@ -51,6 +71,19 @@ final class WindowManager {
     // MARK: - 프레임 계산
 
     private func targetFrame(for action: WindowAction, current: CGRect, visible: CGRect) -> CGRect {
+        let gap = CGFloat(WindowSettingsStore.shared.settings.gap)
+
+        /// 창 사이 간격 적용: 화면 가장자리에 닿는 변은 gap, 창끼리 맞닿는 안쪽 변은 gap/2
+        func gapped(_ rect: CGRect) -> CGRect {
+            guard gap > 0 else { return rect }
+            let left = abs(rect.minX - visible.minX) < 1 ? gap : gap / 2
+            let right = abs(rect.maxX - visible.maxX) < 1 ? gap : gap / 2
+            let top = abs(rect.minY - visible.minY) < 1 ? gap : gap / 2
+            let bottom = abs(rect.maxY - visible.maxY) < 1 ? gap : gap / 2
+            return CGRect(x: rect.minX + left, y: rect.minY + top,
+                          width: rect.width - left - right, height: rect.height - top - bottom)
+        }
+
         func slice(_ fraction: CGFloat, from edge: WindowAction) -> CGRect {
             switch edge {
             case .leftHalf:
@@ -73,25 +106,26 @@ final class WindowManager {
         switch action {
         case .leftHalf, .rightHalf, .topHalf, .bottomHalf:
             // 현재 프레임이 사이클의 i번째와 일치하면 다음 단계로
-            let candidates = Self.cycleFractions.map { slice($0, from: action) }
+            let fractions = WindowSettingsStore.shared.settings.cycleFractions.map { CGFloat($0) }
+            let candidates = (fractions.isEmpty ? [0.5] : fractions).map { gapped(slice($0, from: action)) }
             if let matched = candidates.firstIndex(where: { approximatelyEqual($0, current) }) {
                 return candidates[(matched + 1) % candidates.count]
             }
             return candidates[0]
         case .topLeft:
-            return CGRect(x: visible.minX, y: visible.minY,
-                          width: visible.width / 2, height: visible.height / 2)
+            return gapped(CGRect(x: visible.minX, y: visible.minY,
+                                 width: visible.width / 2, height: visible.height / 2))
         case .topRight:
-            return CGRect(x: visible.midX, y: visible.minY,
-                          width: visible.width / 2, height: visible.height / 2)
+            return gapped(CGRect(x: visible.midX, y: visible.minY,
+                                 width: visible.width / 2, height: visible.height / 2))
         case .bottomLeft:
-            return CGRect(x: visible.minX, y: visible.midY,
-                          width: visible.width / 2, height: visible.height / 2)
+            return gapped(CGRect(x: visible.minX, y: visible.midY,
+                                 width: visible.width / 2, height: visible.height / 2))
         case .bottomRight:
-            return CGRect(x: visible.midX, y: visible.midY,
-                          width: visible.width / 2, height: visible.height / 2)
+            return gapped(CGRect(x: visible.midX, y: visible.midY,
+                                 width: visible.width / 2, height: visible.height / 2))
         case .maximize:
-            return visible
+            return gapped(visible)
         case .maximizeHeight:
             return CGRect(x: current.minX, y: visible.minY,
                           width: current.width, height: visible.height)

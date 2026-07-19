@@ -35,6 +35,14 @@ final class HotKeyManager {
         refs[id.rawValue] = ref
     }
 
+    func unregister(_ id: HotKeyID) {
+        if let ref = refs[id.rawValue] {
+            UnregisterEventHotKey(ref)
+        }
+        refs[id.rawValue] = nil
+        handlers[id.rawValue] = nil
+    }
+
     fileprivate func dispatch(id: UInt32) {
         handlers[id]?()
     }

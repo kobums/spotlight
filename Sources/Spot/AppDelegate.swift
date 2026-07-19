@@ -32,6 +32,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         keyRemapMenuItem.target = self
         menu.addItem(keyRemapMenuItem)
         menu.addItem(.separator())
+        let settingsItem = NSMenuItem(title: "설정…", action: #selector(openSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
         loginMenuItem = NSMenuItem(title: "로그인 시 자동 실행", action: #selector(toggleLoginItem), keyEquivalent: "")
         loginMenuItem.target = self
         menu.addItem(loginMenuItem)
@@ -47,6 +50,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self?.hintModeController.toggle()
         }
         registerWindowHotKeys()
+        WindowSettingsStore.shared.onChange = { [weak self] in
+            self?.registerWindowHotKeys()
+        }
 
         ClipboardStore.shared.startMonitoring()
         LoginItemManager.ensureRegisteredOnFirstLaunch()
@@ -83,33 +89,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         hintModeController.toggle()
     }
 
+    @objc private func openSettings() {
+        SettingsWindowController.shared.show()
+    }
+
     @objc private func toggleLoginItem() {
         LoginItemManager.toggle()
     }
 
-    /// Rectangle에서 쓰던 창 배치 전역 단축키를 그대로 등록한다.
-    /// 창 모드(힌트에서 ".")와 별개로, 근육 기억대로 바로 실행하는 경로.
+    /// 액션 ↔ 핫키 ID 대응 (핫키 재등록 시 어떤 ID를 해제할지 결정)
+    private static let windowHotKeyIDs: [WindowAction: HotKeyManager.HotKeyID] = [
+        .leftHalf: .windowLeftHalf, .rightHalf: .windowRightHalf,
+        .topHalf: .windowTopHalf, .bottomHalf: .windowBottomHalf,
+        .topLeft: .windowTopLeft, .topRight: .windowTopRight,
+        .bottomLeft: .windowBottomLeft, .bottomRight: .windowBottomRight,
+        .maximize: .windowMaximize, .maximizeHeight: .windowMaximizeHeight,
+        .center: .windowCenter, .restore: .windowRestore,
+        .smaller: .windowSmaller, .larger: .windowLarger,
+        .nextDisplay: .windowNextDisplay, .previousDisplay: .windowPrevDisplay,
+    ]
+
+    /// 설정에 저장된 창 배치 전역 단축키를 등록한다 (기본값 = Rectangle에서 쓰던 조합).
+    /// 설정 창에서 바뀌면 onChange로 다시 불려 전체 재등록된다.
     private func registerWindowHotKeys() {
-        let bindings: [(HotKeyManager.HotKeyID, Int, Int, WindowAction)] = [
-            (.windowLeftHalf, kVK_LeftArrow, optionKey | cmdKey, .leftHalf),        // ⌥⌘←
-            (.windowRightHalf, kVK_RightArrow, optionKey | cmdKey, .rightHalf),     // ⌥⌘→
-            (.windowTopHalf, kVK_UpArrow, optionKey | cmdKey, .topHalf),            // ⌥⌘↑
-            (.windowBottomHalf, kVK_DownArrow, optionKey | cmdKey, .bottomHalf),    // ⌥⌘↓
-            (.windowTopLeft, kVK_LeftArrow, controlKey | cmdKey, .topLeft),         // ⌃⌘←
-            (.windowTopRight, kVK_RightArrow, controlKey | cmdKey, .topRight),      // ⌃⌘→
-            (.windowBottomLeft, kVK_LeftArrow, controlKey | shiftKey | cmdKey, .bottomLeft),    // ⌃⇧⌘←
-            (.windowBottomRight, kVK_RightArrow, controlKey | shiftKey | cmdKey, .bottomRight), // ⌃⇧⌘→
-            (.windowMaximize, kVK_ANSI_F, optionKey | cmdKey, .maximize),           // ⌥⌘F
-            (.windowMaximizeHeight, kVK_UpArrow, controlKey | optionKey | shiftKey, .maximizeHeight), // ⌃⌥⇧↑
-            (.windowCenter, kVK_ANSI_C, optionKey | cmdKey, .center),               // ⌥⌘C
-            (.windowRestore, kVK_Delete, controlKey | optionKey, .restore),         // ⌃⌥⌫
-            (.windowSmaller, kVK_LeftArrow, controlKey | optionKey | shiftKey, .smaller),  // ⌃⌥⇧←
-            (.windowLarger, kVK_RightArrow, controlKey | optionKey | shiftKey, .larger),   // ⌃⌥⇧→
-            (.windowNextDisplay, kVK_RightArrow, optionKey | shiftKey | cmdKey, .nextDisplay),     // ⌥⇧⌘→
-            (.windowPrevDisplay, kVK_LeftArrow, optionKey | shiftKey | cmdKey, .previousDisplay),  // ⌥⇧⌘←
-        ]
-        for (id, keyCode, modifiers, action) in bindings {
-            HotKeyManager.shared.register(id, keyCode: keyCode, modifiers: modifiers) {
+        let shortcuts = WindowSettingsStore.shared.settings.shortcuts
+        for (action, id) in Self.windowHotKeyIDs {
+            HotKeyManager.shared.unregister(id)
+            guard let combo = shortcuts[action.rawValue] else { continue }
+            HotKeyManager.shared.register(id, keyCode: combo.keyCode, modifiers: combo.carbonModifiers) {
                 WindowManager.shared.perform(action)
             }
         }

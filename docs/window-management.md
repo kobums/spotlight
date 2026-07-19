@@ -82,12 +82,26 @@ Spot 재시작 시 소실되는 휘발성 저장 — undo 용도로 충분.
 - 디스플레이 이동은 원본 화면 내 상대 위치·크기를 **비율로 유지**하며 이동
 - 전역 단축키에서도 절반 액션의 ½→⅔→⅓ 사이클이 동일하게 동작
 
+## 설정 창
+
+메뉴바 → "설정…" (Rectangle 환경설정 대응, 스냅 영역은 미채택이라 없음):
+
+- **키보드 단축키 탭**: 16개 액션 각각 레코더 — 칸 클릭 → 새 조합 입력(Esc 취소), ✕로 해제,
+  "기본 단축키 복원" 버튼. 변경 즉시 핫키 재등록
+- **설정 탭**: 반복 입력 시 크기 순환 분율(½·⅔·¾·¼·⅓ 체크), 창 사이 간격 슬라이더
+- 저장: `~/Library/Application Support/Spot/window-settings.json` (`JSONFileStore` 디바운스)
+  — 백업·이관은 파일 복사면 된다
+- 간격 규칙: 화면 가장자리에 닿는 변은 gap, 창끼리 맞닿는 안쪽 변은 gap/2
+  (사이클 일치 판정도 gap 적용된 후보와 비교)
+
 ## 컴포넌트
 
 ```
-WindowManager          프레임 계산(사이클 판정 포함) + AX 적용 + 복원 저장
-WindowModeController   하단 HUD + 키 입력 (ScrollModeController 패턴 재사용)
-HintModeController     "." 진입 연결, ⌃Space 순환에 창 모드 종료 추가
+WindowManager            프레임 계산(사이클 판정 포함) + AX 적용 + 복원 저장
+WindowModeController     하단 HUD + 키 입력 (ScrollModeController 패턴 재사용)
+HintModeController       "." 진입 연결, ⌃Space 순환에 창 모드 종료 추가
+WindowSettings(Store)    설정 모델·영속·변경 알림 (핫키 재등록 트리거)
+SettingsWindowController 설정 창 (SwiftUI, 단축키 레코더 포함)
 ```
 
 ## 로드맵
@@ -95,4 +109,5 @@ HintModeController     "." 진입 연결, ⌃Space 순환에 창 모드 종료 �
 - [x] 1단계: 창 모드 + 절반(사이클)/코너/최대화/중앙/복원 (2026-07-19)
 - [x] 2단계(변경): Rectangle 호환 전역 단축키 16개 + 디스플레이 간 이동 + 작게/크게/높이 최대화,
       창 모드에도 `-`/`=`(크기)·`[`/`]`(디스플레이) 추가 (2026-07-19)
-- [ ] 남은 후보: 런처 명령(`창 왼쪽` …), 거의-최대화, 간격(gap) 옵션
+- [x] 설정 창: 단축키 레코더·순환 분율·창 간격, JSON 영속 (2026-07-19)
+- [ ] 남은 후보: 런처 명령(`창 왼쪽` …), 거의-최대화
