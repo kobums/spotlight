@@ -6,6 +6,7 @@ enum ResultKind {
     case calculator
     case clipboard
     case systemAction
+    case settingsPane
     case webSearch
     case uiElement
 }

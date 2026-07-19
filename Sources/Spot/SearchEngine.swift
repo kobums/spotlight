@@ -9,7 +9,8 @@ final class SearchEngine {
 
     /// 동기 프로바이더 — 나열 순서가 정렬 전 기본 순서
     private lazy var syncProviders: [SearchProvider] = [
-        CalculatorProvider(), webSearchProvider, AppProvider(), SystemActionProvider(), AwakeProvider(),
+        CalculatorProvider(), webSearchProvider, AppProvider(), SystemSettingsProvider(),
+        SystemActionProvider(), AwakeProvider(),
     ]
 
     /// 파일 검색(비동기) 결과 콜백

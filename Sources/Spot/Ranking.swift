@@ -15,6 +15,8 @@ enum Score {
     static let appBonus: Double = 2.0       // 앱은 기본 가중치 우대
     static let actionExact: Double = 50
     static let actionBonus: Double = 0.5
+    static let settingsExact: Double = 90    // 완전 일치 앱(100)보다는 낮게
+    static let settingsBonus: Double = 1.5   // 앱(2.0)보다 낮은 우대
     static let fileExact: Double = 3.0
     static let filePenalty: Double = -0.5   // 파일은 앱보다 낮게
 

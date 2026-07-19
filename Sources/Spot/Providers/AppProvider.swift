@@ -83,7 +83,7 @@ final class AppProvider: SearchProvider {
         let fm = FileManager.default
         let baseName = (url.lastPathComponent as NSString).deletingPathExtension
         let displayName = (fm.displayName(atPath: url.path) as NSString).deletingPathExtension
-        let localized = localizedNames(appURL: url)
+        let localized = BundleLocalization.localizedNames(bundleURL: url)
 
         var seen = Set<String>()
         let names = ([baseName, displayName] + localized + (aliases[baseName] ?? []))
@@ -91,37 +91,4 @@ final class AppProvider: SearchProvider {
         return AppEntry(title: localized.first ?? displayName, names: names, url: url)
     }
 
-    /// 사용자 선호 언어의 주 언어 코드 목록, 예: ["ko", "en"]
-    private static let preferredLangCodes: [String] = {
-        var seen = Set<String>()
-        return Locale.preferredLanguages.compactMap { tag in
-            let code = String(tag.prefix(while: { $0 != "-" && $0 != "_" }))
-            return seen.insert(code).inserted ? code : nil
-        }
-    }()
-
-    /// 번들의 현지화된 표시 이름들. loctable(신형식) 우선, 없으면 lproj strings(구형식).
-    private static func localizedNames(appURL: URL) -> [String] {
-        let resources = appURL.appendingPathComponent("Contents/Resources")
-        let nameKeys = ["CFBundleDisplayName", "CFBundleName"]
-        var names: [String] = []
-
-        if let table = NSDictionary(contentsOf: resources.appendingPathComponent("InfoPlist.loctable"))
-            as? [String: [String: Any]] {
-            for lang in preferredLangCodes {
-                guard let entry = table[lang] else { continue }
-                names += nameKeys.compactMap { entry[$0] as? String }
-                if !names.isEmpty { break }
-            }
-        }
-        if names.isEmpty {
-            for lang in preferredLangCodes {
-                let strings = resources.appendingPathComponent("\(lang).lproj/InfoPlist.strings")
-                guard let dict = NSDictionary(contentsOf: strings) as? [String: String] else { continue }
-                names += nameKeys.compactMap { dict[$0] }
-                if !names.isEmpty { break }
-            }
-        }
-        return names
-    }
 }

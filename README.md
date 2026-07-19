@@ -3,7 +3,7 @@
 개인용 macOS 생산성 앱. 두 개의 축으로 이루어져 있다:
 
 1. **런처 (⌥Space)** — Spotlight/Raycast/Alfred/LaunchBar의 장점만 모은 검색창.
-   앱·파일·계산·클립보드·시스템 액션·웹 검색·UI 요소 클릭·잠자기 방지.
+   앱·파일·계산·클립보드·시스템 액션·시스템 설정·웹 검색·UI 요소 클릭·잠자기 방지.
 2. **키보드 화면 접근 (⌃Space)** — Homerow/Vimium/warpd 방식.
    마우스 없이 화면의 아무 요소나 클릭·스크롤하는 힌트/스크롤/그리드 모드.
 
@@ -33,6 +33,7 @@ swift run
 | `1+2*3`, `2^10`, `10km to mi` | 계산기 + 단위 변환 |
 | `cb` 또는 `클립` | 클립보드 히스토리 — Enter 붙여넣기, ⌥⏎ 복사만 |
 | `잠자기`, `다크모드`, `lock` | 시스템 액션 |
+| `디스플레이`, `배터리`, `키보드` | **시스템 설정 패널** 바로 열기 (Spotlight 방식) |
 | `깨어있기`, `awake 30분` | 잠자기 방지 세션 (Amphetamine 방식) |
 | `;저장`, `;뒤로` | 최전면 앱 **UI 요소 검색·클릭** (Shortcat 방식) |
 | `g`/`yt`/`gh`/`nv` + 검색어 | 웹 검색 (구글/유튜브/깃허브/네이버) |
@@ -93,12 +94,12 @@ Sources/Spot/
 │   ├── GridModeController.swift          #   3×3 그리드 (warpd 방식)
 │   ├── WindowModeController.swift        #   창 모드 HUD (Rectangle 방식)
 │   ├── WindowManager.swift               #   창 프레임 계산·AX 적용·복원
-
 │   ├── HintActionPerformer.swift         #   AXPress·클릭·커서 이동 합성
 │   └── HintLabeler / ScreenCoords / AccessibilityPermission
 └── Providers/                            # SearchProvider 구현들
     ├── AppProvider / FileSearchProvider / CalculatorProvider
     ├── ClipboardProvider / SystemActionProvider / WebSearchProvider
+    ├── SystemSettingsProvider.swift      #   시스템 설정 패널 검색
     ├── UIElementProvider.swift           #   ";" UI 요소 검색
     └── AwakeProvider.swift               #   깨어있기 세션
 
