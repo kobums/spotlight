@@ -4,7 +4,13 @@ import Carbon.HIToolbox
 final class HotKeyManager {
     enum HotKeyID: UInt32 {
         case launcher = 1 // ⌥Space
-        case hints = 2    // ⌥⇧Space
+        case hints = 2    // ⌃Space
+
+        // 창 배치 — 사용자가 Rectangle에서 쓰던 단축키 그대로
+        case windowLeftHalf = 10, windowRightHalf, windowTopHalf, windowBottomHalf
+        case windowTopLeft, windowTopRight, windowBottomLeft, windowBottomRight
+        case windowMaximize, windowMaximizeHeight, windowCenter, windowRestore
+        case windowSmaller, windowLarger, windowNextDisplay, windowPrevDisplay
     }
 
     static let shared = HotKeyManager()

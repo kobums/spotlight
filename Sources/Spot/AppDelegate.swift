@@ -46,6 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         HotKeyManager.shared.register(.hints, keyCode: kVK_Space, modifiers: controlKey) { [weak self] in
             self?.hintModeController.toggle()
         }
+        registerWindowHotKeys()
 
         ClipboardStore.shared.startMonitoring()
         LoginItemManager.ensureRegisteredOnFirstLaunch()
@@ -84,6 +85,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func toggleLoginItem() {
         LoginItemManager.toggle()
+    }
+
+    /// Rectangle에서 쓰던 창 배치 전역 단축키를 그대로 등록한다.
+    /// 창 모드(힌트에서 ".")와 별개로, 근육 기억대로 바로 실행하는 경로.
+    private func registerWindowHotKeys() {
+        let bindings: [(HotKeyManager.HotKeyID, Int, Int, WindowAction)] = [
+            (.windowLeftHalf, kVK_LeftArrow, optionKey | cmdKey, .leftHalf),        // ⌥⌘←
+            (.windowRightHalf, kVK_RightArrow, optionKey | cmdKey, .rightHalf),     // ⌥⌘→
+            (.windowTopHalf, kVK_UpArrow, optionKey | cmdKey, .topHalf),            // ⌥⌘↑
+            (.windowBottomHalf, kVK_DownArrow, optionKey | cmdKey, .bottomHalf),    // ⌥⌘↓
+            (.windowTopLeft, kVK_LeftArrow, controlKey | cmdKey, .topLeft),         // ⌃⌘←
+            (.windowTopRight, kVK_RightArrow, controlKey | cmdKey, .topRight),      // ⌃⌘→
+            (.windowBottomLeft, kVK_LeftArrow, controlKey | shiftKey | cmdKey, .bottomLeft),    // ⌃⇧⌘←
+            (.windowBottomRight, kVK_RightArrow, controlKey | shiftKey | cmdKey, .bottomRight), // ⌃⇧⌘→
+            (.windowMaximize, kVK_ANSI_F, optionKey | cmdKey, .maximize),           // ⌥⌘F
+            (.windowMaximizeHeight, kVK_UpArrow, controlKey | optionKey | shiftKey, .maximizeHeight), // ⌃⌥⇧↑
+            (.windowCenter, kVK_ANSI_C, optionKey | cmdKey, .center),               // ⌥⌘C
+            (.windowRestore, kVK_Delete, controlKey | optionKey, .restore),         // ⌃⌥⌫
+            (.windowSmaller, kVK_LeftArrow, controlKey | optionKey | shiftKey, .smaller),  // ⌃⌥⇧←
+            (.windowLarger, kVK_RightArrow, controlKey | optionKey | shiftKey, .larger),   // ⌃⌥⇧→
+            (.windowNextDisplay, kVK_RightArrow, controlKey | optionKey | cmdKey, .nextDisplay),     // ⌃⌥⌘→
+            (.windowPrevDisplay, kVK_LeftArrow, controlKey | optionKey | cmdKey, .previousDisplay),  // ⌃⌥⌘←
+        ]
+        for (id, keyCode, modifiers, action) in bindings {
+            HotKeyManager.shared.register(id, keyCode: keyCode, modifiers: modifiers) {
+                WindowManager.shared.perform(action)
+            }
+        }
     }
 
     @objc private func toggleKeyRemap() {

@@ -1,11 +1,13 @@
 import AppKit
 import ApplicationServices
 
-/// 창 모드에서 실행하는 창 배치 액션.
+/// 창 모드·전역 단축키에서 실행하는 창 배치 액션.
 enum WindowAction {
     case leftHalf, rightHalf, topHalf, bottomHalf
     case topLeft, topRight, bottomLeft, bottomRight
-    case maximize, center, restore
+    case maximize, maximizeHeight, center, restore
+    case smaller, larger
+    case nextDisplay, previousDisplay
 }
 
 /// 최전면 창의 프레임을 계산해 AX로 적용한다 (Rectangle 방식).
@@ -90,10 +92,38 @@ final class WindowManager {
                           width: visible.width / 2, height: visible.height / 2)
         case .maximize:
             return visible
+        case .maximizeHeight:
+            return CGRect(x: current.minX, y: visible.minY,
+                          width: current.width, height: visible.height)
         case .center:
             return CGRect(x: visible.midX - current.width / 2,
                           y: visible.midY - current.height / 2,
                           width: current.width, height: current.height)
+        case .smaller, .larger:
+            // 중심 유지한 채 양 축 ±30px (Rectangle 기본값), 가용 영역·최소 크기로 클램프
+            let delta: CGFloat = action == .larger ? 30 : -30
+            let width = min(max(current.width + delta, 200), visible.width)
+            let height = min(max(current.height + delta, 150), visible.height)
+            var frame = CGRect(x: current.midX - width / 2, y: current.midY - height / 2,
+                               width: width, height: height)
+            frame.origin.x = min(max(frame.minX, visible.minX), visible.maxX - width)
+            frame.origin.y = min(max(frame.minY, visible.minY), visible.maxY - height)
+            return frame
+        case .nextDisplay, .previousDisplay:
+            let screens = NSScreen.screens
+            guard screens.count > 1 else { return current }
+            let nsCurrent = ScreenCoords.cgToNS(current)
+            let index = screens.indices.max { a, b in
+                intersectionArea(screens[a].frame, nsCurrent) < intersectionArea(screens[b].frame, nsCurrent)
+            } ?? 0
+            let offset = action == .nextDisplay ? 1 : screens.count - 1
+            let targetVisible = ScreenCoords.nsToCG(screens[(index + offset) % screens.count].visibleFrame)
+            // 원본 화면 내 상대 위치·크기를 비율로 유지하며 이동
+            return CGRect(
+                x: targetVisible.minX + (current.minX - visible.minX) / visible.width * targetVisible.width,
+                y: targetVisible.minY + (current.minY - visible.minY) / visible.height * targetVisible.height,
+                width: current.width / visible.width * targetVisible.width,
+                height: current.height / visible.height * targetVisible.height)
         case .restore:
             return current // perform()에서 먼저 처리됨
         }
