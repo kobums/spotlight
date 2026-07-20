@@ -43,6 +43,16 @@ xcrun notarytool store-credentials spot-notary \
 
 ---
 
+## make 단축 명령
+
+`make` 또는 `make help` 로 전체 목록을 본다.
+
+| 명령 | 동작 |
+|---|---|
+| `make release` | 서명·공증 빌드 → `dist/Spot-<version>.zip` (게시 없음) |
+| `make publish` | 위 + GitHub 릴리스 + tap cask 갱신 (로컬 전체 게시) |
+| `make release-ci V=0.2.0` | `VERSION` 갱신·커밋·태그 push → GitHub Actions 자동 릴리스 |
+
 ## 로컬 릴리스
 
 ```bash
@@ -50,10 +60,10 @@ xcrun notarytool store-credentials spot-notary \
 echo "0.2.0" > VERSION
 
 # 2. 빌드 → 서명 → 공증 → staple → zip (dist/Spot-<version>.zip + sha256)
-./scripts/release.sh
+./scripts/release.sh          # = make release
 
 # 3. 게시까지 (git 태그 + GitHub 릴리스 + cask 갱신)
-TAP_DIR=~/develop/homebrew-tap ./scripts/release.sh --publish
+TAP_DIR=~/develop/homebrew-tap ./scripts/release.sh --publish   # = make publish
 ```
 
 `--publish` 없이 실행하면 `dist/` 에 결과물만 만들고 sha256 을 출력한다.
