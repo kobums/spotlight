@@ -186,26 +186,9 @@ final class WindowManager {
     // MARK: - AX 적용
 
     private func focusedWindow(of appElement: AXUIElement) -> (AXUIElement, CGRect)? {
-        var windowRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &windowRef) == .success,
-              let windowRef, CFGetTypeID(windowRef) == AXUIElementGetTypeID() else { return nil }
-        let window = windowRef as! AXUIElement
-        guard let frame = frame(of: window) else { return nil }
+        guard let window = AX.element(AX.attribute(appElement, kAXFocusedWindowAttribute as String)),
+              let frame = AX.frame(of: window) else { return nil }
         return (window, frame)
-    }
-
-    private func frame(of window: AXUIElement) -> CGRect? {
-        var positionRef: CFTypeRef?
-        var sizeRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &positionRef) == .success,
-              AXUIElementCopyAttributeValue(window, kAXSizeAttribute as CFString, &sizeRef) == .success,
-              let positionRef, CFGetTypeID(positionRef) == AXValueGetTypeID(),
-              let sizeRef, CFGetTypeID(sizeRef) == AXValueGetTypeID() else { return nil }
-        var position = CGPoint.zero
-        var size = CGSize.zero
-        guard AXValueGetValue(positionRef as! AXValue, .cgPoint, &position),
-              AXValueGetValue(sizeRef as! AXValue, .cgSize, &size) else { return nil }
-        return CGRect(origin: position, size: size)
     }
 
     private func setFrame(_ frame: CGRect, for window: AXUIElement, appElement: AXUIElement) {

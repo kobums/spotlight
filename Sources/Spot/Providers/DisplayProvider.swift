@@ -17,17 +17,15 @@ final class DisplayProvider: SearchProvider {
         let parts = query.split(separator: " ").map(String.init)
         guard let first = parts.first else { return [] }
 
-        var bestScore: Double?
+        var baseScore: Double?
         var command: Command?
         for (words, cmd) in Self.keywords {
-            let scores = words.compactMap { FuzzyMatch.score(needle: first, haystack: $0) }
-            if let s = scores.max(), s > (bestScore ?? -.infinity) {
-                bestScore = s
+            if let s = CommandKeywords.score(first, keywords: words), s > (baseScore ?? -.infinity) {
+                baseScore = s
                 command = cmd
             }
         }
-        guard let bestScore, let command else { return [] }
-        let baseScore = (bestScore.isInfinite ? Score.actionExact : bestScore) + Score.actionBonus
+        guard let baseScore, let command else { return [] }
 
         // 인자 파싱: 숫자(±상대 포함)는 값, 나머지는 모니터 이름 토큰
         var value: Int?

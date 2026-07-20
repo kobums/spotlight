@@ -41,11 +41,8 @@ enum HintTargetCollector {
 
     /// 최전면 앱 포커스 창의 프레임 (CG 좌표). 스크롤 모드의 포인터 이동 목표.
     static func focusedWindowFrame() -> CGRect? {
-        guard let app = frontmostApp() else { return nil }
-        let appElement = AXUIElementCreateApplication(app.processIdentifier)
-        var windowRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &windowRef) == .success,
-              let window = axElement(windowRef) else { return nil }
+        guard let app = frontmostApp(),
+              let window = AX.focusedWindow(pid: app.processIdentifier) else { return nil }
         let (_, _, frame, _) = fetchAttributes(window)
         return frame
     }
@@ -108,9 +105,7 @@ enum HintTargetCollector {
         }
 
         // 메뉴 막대 항목
-        var menuBarRef: CFTypeRef?
-        if AXUIElementCopyAttributeValue(appElement, kAXMenuBarAttribute as CFString, &menuBarRef) == .success,
-           let menuBar = axElement(menuBarRef) {
+        if let menuBar = AX.element(AX.attribute(appElement, kAXMenuBarAttribute as String)) {
             let (_, _, _, items) = fetchAttributes(menuBar)
             for item in items {
                 let (role, name, frame, _) = fetchAttributes(item)
@@ -158,35 +153,15 @@ enum HintTargetCollector {
         let name = title.isEmpty ? description : title
 
         var frame: CGRect?
-        if let origin = axPoint(values[3]), let size = axSize(values[4]) {
+        if let origin = AX.point(values[3]), let size = AX.size(values[4]) {
             frame = CGRect(origin: origin, size: size)
         }
 
         var children: [AXUIElement] = []
         if CFGetTypeID(values[5]) == CFArrayGetTypeID(), let array = values[5] as? [AnyObject] {
-            children = array.compactMap(axElement)
+            children = array.compactMap(AX.element)
         }
         return (role, name, frame, children)
-    }
-
-    // MARK: - CF 타입 안전 캐스트
-
-    /// CFTypeID 확인 후 캐스트 — AX API가 돌려주는 CFTypeRef를 안전하게 다루는 유일한 경로
-    private static func axElement(_ value: AnyObject?) -> AXUIElement? {
-        guard let value, CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
-        return (value as! AXUIElement)
-    }
-
-    private static func axPoint(_ value: AnyObject?) -> CGPoint? {
-        guard let value, CFGetTypeID(value) == AXValueGetTypeID() else { return nil }
-        var point = CGPoint.zero
-        return AXValueGetValue(value as! AXValue, .cgPoint, &point) ? point : nil
-    }
-
-    private static func axSize(_ value: AnyObject?) -> CGSize? {
-        guard let value, CFGetTypeID(value) == AXValueGetTypeID() else { return nil }
-        var size = CGSize.zero
-        return AXValueGetValue(value as! AXValue, .cgSize, &size) ? size : nil
     }
 
     /// Electron/Chromium 앱은 보조 기술이 감지될 때만 AX 트리를 만든다.

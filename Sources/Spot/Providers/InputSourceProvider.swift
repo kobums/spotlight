@@ -12,21 +12,15 @@ final class InputSourceProvider: SearchProvider {
         guard let first = parts.first else { return [] }
         let rest = parts.dropFirst().joined(separator: " ")
 
-        if let score = bestScore(first, in: Self.ruleKeywords) {
+        if let score = CommandKeywords.score(first, keywords: Self.ruleKeywords) {
             if rest == "목록" || rest == "list" { return ruleListResults(score: score) }
             guard rest.isEmpty else { return [] }
             return ruleResults(score: score)
         }
-        if let score = bestScore(first, in: Self.switchKeywords), rest.isEmpty {
+        if let score = CommandKeywords.score(first, keywords: Self.switchKeywords), rest.isEmpty {
             return switchResults(score: score)
         }
         return []
-    }
-
-    private func bestScore(_ needle: String, in keywords: [String]) -> Double? {
-        let scores = keywords.compactMap { FuzzyMatch.score(needle: needle, haystack: $0) }
-        guard let best = scores.max() else { return nil }
-        return (best.isInfinite ? Score.actionExact : best) + Score.actionBonus
     }
 
     // MARK: - 규칙 등록 (최전면 앱 대상)

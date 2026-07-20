@@ -7,12 +7,8 @@ final class AwakeProvider: SearchProvider {
 
     func results(for query: String) -> [SearchResult] {
         let parts = query.split(separator: " ", maxSplits: 1)
-        guard let first = parts.first else { return [] }
-        let keywordScores = Self.keywords.compactMap {
-            FuzzyMatch.score(needle: String(first), haystack: $0)
-        }
-        guard let best = keywordScores.max() else { return [] }
-        let baseScore = (best.isInfinite ? Score.actionExact : best) + Score.actionBonus
+        guard let first = parts.first,
+              let baseScore = CommandKeywords.score(String(first), keywords: Self.keywords) else { return [] }
 
         let durationText = parts.count > 1 ? String(parts[1]) : ""
         let duration = Self.parseDuration(durationText)

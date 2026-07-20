@@ -51,25 +51,14 @@ final class InputSourceIndicator {
     private func caretPositionNS() -> NSPoint? {
         guard let app = HintTargetCollector.frontmostApp() else { return nil }
         let appElement = AXUIElementCreateApplication(app.processIdentifier)
-
-        var focusedRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(appElement, kAXFocusedUIElementAttribute as CFString, &focusedRef) == .success,
-              let focusedRef, CFGetTypeID(focusedRef) == AXUIElementGetTypeID() else { return nil }
-        let focused = focusedRef as! AXUIElement
-
-        var rangeRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(focused, kAXSelectedTextRangeAttribute as CFString, &rangeRef) == .success,
-              let rangeRef, CFGetTypeID(rangeRef) == AXValueGetTypeID() else { return nil }
+        guard let focused = AX.element(AX.attribute(appElement, kAXFocusedUIElementAttribute as String)),
+              let rangeRef = AX.attribute(focused, kAXSelectedTextRangeAttribute as String) else { return nil }
 
         var boundsRef: CFTypeRef?
         guard AXUIElementCopyParameterizedAttributeValue(
             focused, kAXBoundsForRangeParameterizedAttribute as CFString,
             rangeRef, &boundsRef) == .success,
-              let boundsRef, CFGetTypeID(boundsRef) == AXValueGetTypeID() else { return nil }
-
-        var rect = CGRect.zero
-        guard AXValueGetValue(boundsRef as! AXValue, .cgRect, &rect), rect.width >= 0,
-              rect != .zero else { return nil }
+              let rect = AX.rect(boundsRef), rect != .zero else { return nil }
         // CG(좌상단 원점) → NS(좌하단 원점), 캐럿 하단 기준
         let ns = ScreenCoords.cgToNS(rect)
         return NSPoint(x: ns.minX, y: ns.minY)
