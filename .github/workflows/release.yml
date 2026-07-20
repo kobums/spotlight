@@ -1,0 +1,74 @@
+name: Release
+
+# v* 태그를 push 하면 서명·공증된 Spot.app 을 빌드해 GitHub 릴리스로 게시하고
+# Homebrew tap(kobums/homebrew-tap)의 cask 를 자동 갱신한다.
+#
+# 필요한 저장소 Secrets:
+#   DEVELOPER_ID_CERT_P12_BASE64  Developer ID Application 인증서(.p12)를 base64 인코딩한 값
+#                                   base64 -i cert.p12 | pbcopy
+#   DEVELOPER_ID_CERT_PASSWORD    위 .p12 내보내기 암호
+#   KEYCHAIN_PASSWORD             CI 임시 keychain 암호 (아무 값이나)
+#   ASC_KEY_P8_BASE64            App Store Connect API 키(.p8)를 base64 인코딩한 값
+#   ASC_KEY_ID                   API 키 ID (파일명 AuthKey_XXXX.p8 의 XXXX)
+#   ASC_ISSUER_ID               App Store Connect Issuer ID (UUID)
+#   TAP_REPO_TOKEN              kobums/homebrew-tap 에 push 가능한 PAT (repo 스코프)
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Developer ID 인증서 keychain 가져오기
+        env:
+          CERT_P12_BASE64: ${{ secrets.DEVELOPER_ID_CERT_P12_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          CERT=$RUNNER_TEMP/cert.p12
+          KEYCHAIN=$RUNNER_TEMP/build.keychain-db
+          echo "$CERT_P12_BASE64" | base64 --decode > "$CERT"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$CERT" -k "$KEYCHAIN" -P "$CERT_PASSWORD" \
+            -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychain -d user -s "$KEYCHAIN" login.keychain-db
+
+      - name: 공증 API 키 준비
+        env:
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+        run: |
+          echo "$ASC_KEY_P8_BASE64" | base64 --decode > "$RUNNER_TEMP/asc.p8"
+
+      - name: 빌드 · 서명 · 공증 · 릴리스
+        env:
+          NOTARY_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          NOTARY_ISSUER: ${{ secrets.ASC_ISSUER_ID }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NOTARY_KEY="$RUNNER_TEMP/asc.p8" ./scripts/release.sh --publish
+
+      - name: Homebrew tap cask 갱신
+        env:
+          TAP_REPO_TOKEN: ${{ secrets.TAP_REPO_TOKEN }}
+        run: |
+          VERSION=$(cat VERSION)
+          SHA=$(cat "dist/Spot-$VERSION.zip.sha256")
+          git clone "https://x-access-token:${TAP_REPO_TOKEN}@github.com/kobums/homebrew-tap.git" "$RUNNER_TEMP/tap"
+          ./scripts/update-cask.sh "$RUNNER_TEMP/tap/Casks/spot.rb" "$VERSION" "$SHA"
+          git -C "$RUNNER_TEMP/tap" config user.name "github-actions"
+          git -C "$RUNNER_TEMP/tap" config user.email "actions@github.com"
+          git -C "$RUNNER_TEMP/tap" add Casks/spot.rb
+          git -C "$RUNNER_TEMP/tap" commit -m "spot $VERSION" || echo "변경 없음"
+          git -C "$RUNNER_TEMP/tap" push
