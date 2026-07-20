@@ -57,6 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         ClipboardStore.shared.startMonitoring()
         LoginItemManager.ensureRegisteredOnFirstLaunch()
         KeyRemapManager.shared.start()
+        InputSourceManager.shared.start()
 
         AwakeSessionManager.shared.onChange = { [weak self] in
             self?.updateStatusIcon()

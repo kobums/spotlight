@@ -7,11 +7,12 @@ Spot은 개인용 macOS 런처(⌥Space) + 키보드 화면 접근 도구(⌃Spa
 
 | 문서 | 대상 | 내용 |
 |---|---|---|
-| [features.md](features.md) | 사용자 | 전체 기능 상세 — 런처의 11개 검색 모드, 키보드 화면 접근 4개 모드의 키맵과 동작 |
+| [features.md](features.md) | 사용자 | 전체 기능 상세 — 런처의 12개 검색 모드, 키보드 화면 접근 4개 모드의 키맵과 동작 |
 | [architecture.md](architecture.md) | 개발자 | 코드 구조와 구현 방식 — 검색 파이프라인, 접근성 API 활용, 좌표계, 한글 IME 대응, 권한·서명, 트러블슈팅 |
 | [research.md](research.md) | 설계 배경 | 개발 전 조사 — 기존 런처(Raycast/Alfred/LaunchBar…)와 키보드 접근 앱(Homerow/Shortcat/warpd…) 분석 |
 | [window-management.md](window-management.md) | 설계 배경 | 창 관리(Rectangle 대체) 조사·설계 — 채택 범위, 창 모드 키맵, AX 창 이동 함정 |
 | [display-control.md](display-control.md) | 설계 배경 | 모니터 제어(MonitorControl 대체) 조사·설계 — DDC/CI, 비공개 API, 감마 폴백 |
+| [input-source.md](input-source.md) | 설계 배경 | 입력 소스 자동 전환(Input Source Pro 대체) 조사·설계 — TIS, 앱별 규칙, 인디케이터 |
 
 ## 구현 연혁 요약
 
@@ -34,3 +35,4 @@ Spot은 개인용 macOS 런처(⌥Space) + 키보드 화면 접근 도구(⌃Spa
 | 2026-07-19 | 설정 창 — 단축키 레코더, 순환 분율(½·⅔·¾·¼·⅓), 창 간격, JSON 영속 |
 | 2026-07-19 | 시스템 설정 패널 검색 — Spotlight 방식, 한글·초성·별칭, x-apple.systempreferences |
 | 2026-07-20 | 모니터 제어 — MonitorControl 대체 (DDC/CI 밝기·볼륨·음소거, 감마 폴백, 핫플러그 재스캔) |
+| 2026-07-20 | 입력 소스 자동 전환 — Input Source Pro 대체 (앱별 규칙, 한/A 인디케이터, TIS) |

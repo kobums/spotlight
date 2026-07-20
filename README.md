@@ -36,6 +36,7 @@ swift run
 | `디스플레이`, `배터리`, `키보드` | **시스템 설정 패널** 바로 열기 (Spotlight 방식) |
 | `깨어있기`, `awake 30분` | 잠자기 방지 세션 (Amphetamine 방식) |
 | `밝기 50`, `볼륨 +5`, `음소거` | 외장 **모니터 밝기·볼륨** 제어 (MonitorControl 방식, DDC) |
+| `입력규칙`, `한영` | 앱별 **한/영 자동 전환** + 전환 배지 (Input Source Pro 방식) |
 | `;저장`, `;뒤로` | 최전면 앱 **UI 요소 검색·클릭** (Shortcat 방식) |
 | `g`/`yt`/`gh`/`nv` + 검색어 | 웹 검색 (구글/유튜브/깃허브/네이버) |
 
@@ -91,6 +92,9 @@ Sources/Spot/
 │   ├── DDCService.swift                  #   Apple Silicon DDC/CI (IOAVService dlsym)
 │   ├── GammaDimmer.swift                 #   DDC 불가 모니터 감마 디밍
 │   └── DisplayControlManager.swift       #   통합 계층·상태 캐시·핫플러그 재스캔
+├── InputSource/                          # 입력 소스 자동 전환 (Input Source Pro 방식)
+│   ├── InputSourceManager.swift          #   TIS 전환·앱별 규칙·활성화 감시
+│   └── InputSourceIndicator.swift        #   한/A 배지 오버레이 (캐럿 근처)
 ├── HintMode/                             # 키보드 화면 접근
 │   ├── HintModeController.swift          #   모드 오케스트레이터 (힌트→스크롤→그리드)
 │   ├── HintTargetCollector.swift         #   AX 트리 순회·요소 수집
@@ -107,6 +111,7 @@ Sources/Spot/
     ├── SystemSettingsProvider.swift      #   시스템 설정 패널 검색
     ├── UIElementProvider.swift           #   ";" UI 요소 검색
     ├── DisplayProvider.swift             #   모니터 밝기·볼륨 명령
+    ├── InputSourceProvider.swift         #   입력규칙·한영 전환 명령
     └── AwakeProvider.swift               #   깨어있기 세션
 
 assets/AppIcon.icns                       # 앱 아이콘 (scripts/make-icon.swift로 생성)
