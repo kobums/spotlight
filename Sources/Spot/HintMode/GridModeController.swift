@@ -9,18 +9,9 @@ final class GridModel: ObservableObject {
 
 /// 화면을 3×3 격자로 재귀 분할해 좌표를 좁혀가는 그리드 모드 (warpd/keynav 방식).
 /// 접근성 트리가 없는 앱에서의 폴백 — QWE/ASD/ZXC로 칸 선택, Return/Space로 클릭.
-final class GridModeController: NSObject, NSWindowDelegate {
-    private final class OverlayPanel: NSPanel {
-        override var canBecomeKey: Bool { true }
-        override var canBecomeMain: Bool { false }
-    }
-
-    private var panel: OverlayPanel?
-    private var keyMonitor: Any?
+final class GridModeController: ModeOverlayController {
     private var model = GridModel()
     private var screenOriginCG: CGPoint = .zero
-
-    var isVisible: Bool { panel?.isVisible ?? false }
 
     /// keyCode → (열, 행). QWE 윗줄 / ASD 가운데 / ZXC 아랫줄 — 자판 배치가 곧 화면 배치
     private static let cells: [Int: (col: Int, row: Int)] = [
@@ -30,7 +21,6 @@ final class GridModeController: NSObject, NSWindowDelegate {
     ]
 
     func show() {
-        cancel()
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
         guard let screen else { return }
@@ -40,47 +30,13 @@ final class GridModeController: NSObject, NSWindowDelegate {
         model.region = CGRect(origin: .zero, size: screen.frame.size)
         self.model = model
 
-        let panel = OverlayPanel(
-            contentRect: screen.frame,
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered,
-            defer: false
-        )
-        panel.level = .screenSaver
-        panel.isOpaque = false
-        panel.backgroundColor = .clear
-        panel.hasShadow = false
-        panel.ignoresMouseEvents = true
-        panel.hidesOnDeactivate = false
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.delegate = self
-        panel.contentView = NSHostingView(rootView: GridOverlayView(model: model))
-        panel.setFrame(screen.frame, display: true)
-        self.panel = panel
-        panel.makeKeyAndOrderFront(nil)
-
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            self?.handle(event)
-        }
-    }
-
-    func cancel() {
-        if let keyMonitor {
-            NSEvent.removeMonitor(keyMonitor)
-            self.keyMonitor = nil
-        }
-        panel?.delegate = nil
-        panel?.orderOut(nil)
-        panel = nil
-    }
-
-    func windowDidResignKey(_ notification: Notification) {
-        cancel()
+        present(frame: screen.frame,
+                view: NSHostingView(rootView: GridOverlayView(model: model)))
     }
 
     // MARK: - 키 입력
 
-    private func handle(_ event: NSEvent) -> NSEvent? {
+    override func handle(_ event: NSEvent) -> NSEvent? {
         switch Int(event.keyCode) {
         case kVK_Escape:
             cancel()

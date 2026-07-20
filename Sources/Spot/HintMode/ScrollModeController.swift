@@ -4,20 +4,8 @@ import SwiftUI
 
 /// HJKL 스크롤 모드. 포인터를 최전면 창 중앙으로 옮긴 뒤 스크롤 휠 이벤트를 합성한다.
 /// 키 입력은 하단 HUD 패널이 키 윈도우가 되어 삼킨다 — 대상 앱에는 스크롤만 전달된다.
-final class ScrollModeController: NSObject, NSWindowDelegate {
-    private final class HUDPanel: NSPanel {
-        override var canBecomeKey: Bool { true }
-        override var canBecomeMain: Bool { false }
-    }
-
-    private var panel: HUDPanel?
-    private var keyMonitor: Any?
-
-    var isVisible: Bool { panel?.isVisible ?? false }
-
+final class ScrollModeController: ModeOverlayController {
     func show() {
-        cancel()
-
         // 스크롤 이벤트는 포인터 아래 창으로 가므로, 포인터를 대상 창 중앙으로 이동
         let windowFrame = HintTargetCollector.focusedWindowFrame()
         if let windowFrame {
@@ -35,46 +23,13 @@ final class ScrollModeController: NSObject, NSWindowDelegate {
             x: screen.frame.midX - hudSize.width / 2,
             y: screen.frame.minY + 60
         )
-        let panel = HUDPanel(
-            contentRect: NSRect(origin: origin, size: hudSize),
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered,
-            defer: false
-        )
-        panel.level = .screenSaver
-        panel.isOpaque = false
-        panel.backgroundColor = .clear
-        panel.hasShadow = false
-        panel.ignoresMouseEvents = true
-        panel.hidesOnDeactivate = false
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.delegate = self
-        panel.contentView = NSHostingView(rootView: ScrollHUDView())
-        self.panel = panel
-        panel.makeKeyAndOrderFront(nil)
-
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            self?.handle(event)
-        }
-    }
-
-    func cancel() {
-        if let keyMonitor {
-            NSEvent.removeMonitor(keyMonitor)
-            self.keyMonitor = nil
-        }
-        panel?.delegate = nil
-        panel?.orderOut(nil)
-        panel = nil
-    }
-
-    func windowDidResignKey(_ notification: Notification) {
-        cancel()
+        present(frame: NSRect(origin: origin, size: hudSize),
+                view: NSHostingView(rootView: ScrollHUDView()))
     }
 
     // MARK: - 키 입력
 
-    private func handle(_ event: NSEvent) -> NSEvent? {
+    override func handle(_ event: NSEvent) -> NSEvent? {
         let line: Int32 = 3
         let halfPage: Int32 = 18
         switch Int(event.keyCode) {

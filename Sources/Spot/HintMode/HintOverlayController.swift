@@ -16,15 +16,8 @@ final class HintOverlayModel: ObservableObject {
 }
 
 /// 화면 전체를 덮는 클릭 통과 패널에 힌트 라벨을 그리고, 키 입력으로 좁혀서 선택한다.
-final class HintOverlayController: NSObject, NSWindowDelegate {
-    private final class OverlayPanel: NSPanel {
-        override var canBecomeKey: Bool { true }
-        override var canBecomeMain: Bool { false }
-    }
-
-    private var panel: OverlayPanel?
+final class HintOverlayController: ModeOverlayController {
     private var model = HintOverlayModel()
-    private var keyMonitor: Any?
     private var onSelect: ((HintTarget) -> Void)?
 
     /// Tab으로 스크롤 모드 전환
@@ -34,12 +27,7 @@ final class HintOverlayController: NSObject, NSWindowDelegate {
     /// "."로 창 모드 전환
     var onSwitchToWindowMode: (() -> Void)?
 
-    var isVisible: Bool { panel?.isVisible ?? false }
-
     func show(targets: [HintTarget], on screen: NSScreen, onSelect: @escaping (HintTarget) -> Void) {
-        cancel()
-        self.onSelect = onSelect
-
         let screenCG = ScreenCoords.nsToCG(screen.frame)
         let labels = HintLabeler.labels(count: targets.count)
         let model = HintOverlayModel()
@@ -55,43 +43,13 @@ final class HintOverlayController: NSObject, NSWindowDelegate {
         }
         self.model = model
 
-        let panel = OverlayPanel(
-            contentRect: screen.frame,
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered,
-            defer: false
-        )
-        panel.level = .screenSaver
-        panel.isOpaque = false
-        panel.backgroundColor = .clear
-        panel.hasShadow = false
-        panel.ignoresMouseEvents = true
-        panel.hidesOnDeactivate = false
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.delegate = self
-        panel.contentView = NSHostingView(rootView: HintOverlayView(model: model))
-        panel.setFrame(screen.frame, display: true)
-        self.panel = panel
-        panel.makeKeyAndOrderFront(nil)
-
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            self?.handle(event)
-        }
+        present(frame: screen.frame,
+                view: NSHostingView(rootView: HintOverlayView(model: model)))
+        self.onSelect = onSelect  // present의 cancel()이 지우므로 이후에 설정
     }
 
-    func cancel() {
-        if let keyMonitor {
-            NSEvent.removeMonitor(keyMonitor)
-            self.keyMonitor = nil
-        }
+    override func didCancel() {
         onSelect = nil
-        panel?.delegate = nil
-        panel?.orderOut(nil)
-        panel = nil
-    }
-
-    func windowDidResignKey(_ notification: Notification) {
-        cancel()
     }
 
     // MARK: - 키 입력
@@ -108,7 +66,7 @@ final class HintOverlayController: NSObject, NSWindowDelegate {
         kVK_ANSI_Y: "Y", kVK_ANSI_Z: "Z",
     ]
 
-    private func handle(_ event: NSEvent) -> NSEvent? {
+    override func handle(_ event: NSEvent) -> NSEvent? {
         switch Int(event.keyCode) {
         case kVK_Escape:
             cancel()

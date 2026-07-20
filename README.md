@@ -96,15 +96,19 @@ Sources/Spot/
 │   ├── InputSourceManager.swift          #   TIS 전환·앱별 규칙·활성화 감시
 │   └── InputSourceIndicator.swift        #   한/A 배지 오버레이 (캐럿 근처)
 ├── HintMode/                             # 키보드 화면 접근
-│   ├── HintModeController.swift          #   모드 오케스트레이터 (힌트→스크롤→그리드)
+│   ├── HintModeController.swift          #   모드 오케스트레이터 (힌트→스크롤→그리드→창)
+│   ├── ModeOverlayController.swift       #   모드 오버레이 공통 기반 (패널·키 모니터)
+│   ├── AXHelpers.swift                   #   AX CF 캐스트·조회 공용 헬퍼
 │   ├── HintTargetCollector.swift         #   AX 트리 순회·요소 수집
 │   ├── HintOverlayController.swift       #   라벨 오버레이 + 키 입력
 │   ├── ScrollModeController.swift        #   HJKL 스크롤 + HUD
 │   ├── GridModeController.swift          #   3×3 그리드 (warpd 방식)
-│   ├── WindowModeController.swift        #   창 모드 HUD (Rectangle 방식)
-│   ├── WindowManager.swift               #   창 프레임 계산·AX 적용·복원
 │   ├── HintActionPerformer.swift         #   AXPress·클릭·커서 이동 합성
 │   └── HintLabeler / ScreenCoords / AccessibilityPermission
+├── Window/                               # 창 배치 (Rectangle 방식)
+│   ├── WindowManager.swift               #   창 프레임 계산·AX 적용·복원
+│   ├── WindowModeController.swift        #   창 모드 HUD
+│   └── WindowSettings.swift              #   단축키·순환·간격 설정 모델
 └── Providers/                            # SearchProvider 구현들
     ├── AppProvider / FileSearchProvider / CalculatorProvider
     ├── ClipboardProvider / SystemActionProvider / WebSearchProvider
