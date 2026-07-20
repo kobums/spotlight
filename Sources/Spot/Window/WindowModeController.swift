@@ -4,20 +4,8 @@ import SwiftUI
 
 /// 창 모드: 단일 키로 최전면 창을 배치한다 (Rectangle 대체).
 /// 모드가 유지되어 연속 조작 가능 — "H(왼쪽 절반) → H(⅔) → K(상단)" 식.
-final class WindowModeController: NSObject, NSWindowDelegate {
-    private final class HUDPanel: NSPanel {
-        override var canBecomeKey: Bool { true }
-        override var canBecomeMain: Bool { false }
-    }
-
-    private var panel: HUDPanel?
-    private var keyMonitor: Any?
-
-    var isVisible: Bool { panel?.isVisible ?? false }
-
+final class WindowModeController: ModeOverlayController {
     func show() {
-        cancel()
-
         let screen = HintTargetCollector.focusedWindowFrame().flatMap { frame in
             let nsRect = ScreenCoords.cgToNS(frame)
             return NSScreen.screens.first { $0.frame.intersects(nsRect) }
@@ -29,46 +17,13 @@ final class WindowModeController: NSObject, NSWindowDelegate {
             x: screen.frame.midX - hudSize.width / 2,
             y: screen.frame.minY + 60
         )
-        let panel = HUDPanel(
-            contentRect: NSRect(origin: origin, size: hudSize),
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered,
-            defer: false
-        )
-        panel.level = .screenSaver
-        panel.isOpaque = false
-        panel.backgroundColor = .clear
-        panel.hasShadow = false
-        panel.ignoresMouseEvents = true
-        panel.hidesOnDeactivate = false
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.delegate = self
-        panel.contentView = NSHostingView(rootView: WindowHUDView())
-        self.panel = panel
-        panel.makeKeyAndOrderFront(nil)
-
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            self?.handle(event)
-        }
-    }
-
-    func cancel() {
-        if let keyMonitor {
-            NSEvent.removeMonitor(keyMonitor)
-            self.keyMonitor = nil
-        }
-        panel?.delegate = nil
-        panel?.orderOut(nil)
-        panel = nil
-    }
-
-    func windowDidResignKey(_ notification: Notification) {
-        cancel()
+        present(frame: NSRect(origin: origin, size: hudSize),
+                view: NSHostingView(rootView: WindowHUDView()))
     }
 
     // MARK: - 키 입력
 
-    private func handle(_ event: NSEvent) -> NSEvent? {
+    override func handle(_ event: NSEvent) -> NSEvent? {
         switch Int(event.keyCode) {
         case kVK_Escape: cancel()
         case kVK_ANSI_H: WindowManager.shared.perform(.leftHalf)
