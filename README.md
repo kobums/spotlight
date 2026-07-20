@@ -9,15 +9,26 @@
 
 Swift 네이티브(SwiftPM + AppKit + SwiftUI), 외부 의존성 0개, 네트워크 통신·텔레메트리 없음.
 
-## 실행
+## 설치
+
+```bash
+# Homebrew (권장) — 서명·공증된 배포본
+brew tap kobums/tap
+brew trust kobums/tap        # 서드파티 tap 신뢰 (최신 Homebrew 필수)
+brew install --cask spot
+```
+
+## 실행 (개발)
 
 ```bash
 # 개발 실행
 swift run
 
-# 설치 (빌드 → 서명 → /Applications 복사 → 실행)
+# 로컬 설치 (빌드 → 서명 → /Applications 복사 → 실행)
 ./scripts/install.sh
 ```
+
+릴리스·배포 절차는 [docs/RELEASE.md](docs/RELEASE.md) 참조.
 
 첫 실행 시 로그인 항목에 자동 등록된다. 끄려면 메뉴바 아이콘 → "로그인 시 자동 실행" 토글.
 
