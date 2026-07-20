@@ -10,7 +10,7 @@ final class InputSourceIndicator {
     private var panel: NSPanel?
     private var hideWork: DispatchWorkItem?
 
-    func show(badge: String, korean: Bool) {
+    func show(badge: String, korean: Bool, duration: Double = 1.0) {
         let position = caretPositionNS() ?? pointerPositionNS()
 
         let size = NSSize(width: 34, height: 34)
@@ -42,7 +42,7 @@ final class InputSourceIndicator {
         hideWork?.cancel()
         let work = DispatchWorkItem { [weak self] in self?.panel?.orderOut(nil) }
         hideWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration, execute: work)
     }
 
     // MARK: - 위치

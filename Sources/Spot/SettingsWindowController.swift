@@ -117,6 +117,7 @@ final class SettingsViewModel: ObservableObject {
 
 struct SettingsView: View {
     @StateObject private var model = SettingsViewModel()
+    @StateObject private var inputSourceModel = InputSourceSettingsViewModel()
 
     var body: some View {
         TabView {
@@ -124,6 +125,8 @@ struct SettingsView: View {
                 .tabItem { Label("키보드 단축키", systemImage: "command") }
             GeneralTab(model: model)
                 .tabItem { Label("설정", systemImage: "gearshape") }
+            InputSourceTab(model: inputSourceModel)
+                .tabItem { Label("입력 소스", systemImage: "keyboard") }
         }
         .frame(width: 560, height: 470)
         .onDisappear { model.stopRecording() }

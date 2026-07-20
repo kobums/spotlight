@@ -16,15 +16,34 @@ final class InputSourceManager {
         var badge: String { id.contains("Korean") ? "한" : "A" }
     }
 
-    private let store = JSONFileStore<[String: String]>(filename: "input-rules.json", saveDelay: 0.5)
-    private(set) var rules: [String: String]  // bundleID → sourceID
+    struct Settings: Codable {
+        var rules: [String: String] = [:]  // bundleID → sourceID
+        var indicatorEnabled: Bool = true
+        var indicatorDuration: Double = 1.0
+    }
+
+    private let store = JSONFileStore<Settings>(filename: "input-rules.json", saveDelay: 0.5)
+    private(set) var settings: Settings
+    /// 설정 변경 알림 (설정 창 갱신용)
+    var onChange: (() -> Void)?
+
+    var rules: [String: String] { settings.rules }
+
     private let indicator = InputSourceIndicator()
     private var applyWork: DispatchWorkItem?
     /// 자동 전환 직후의 변경 알림에 인디케이터를 중복 표시하지 않기 위한 플래그
     private var suppressChangeIndicatorUntil = Date.distantPast
 
     private init() {
-        rules = store.load() ?? [:]
+        // 구식 포맷([bundleID: sourceID] 딕셔너리) 마이그레이션 — 신형은 rules 값이
+        // 객체라 [String: String] 디코드가 실패하는 것으로 포맷을 판별한다
+        let legacyStore = JSONFileStore<[String: String]>(filename: "input-rules.json", saveDelay: 0.5)
+        if let legacy = legacyStore.load() {
+            settings = Settings(rules: legacy)
+            store.scheduleSave(settings)
+        } else {
+            settings = store.load() ?? Settings()
+        }
     }
 
     func start() {
@@ -72,8 +91,16 @@ final class InputSourceManager {
     }
 
     func setRule(bundleID: String, sourceID: String?) {
-        rules[bundleID] = sourceID
-        store.scheduleSave(rules)
+        settings.rules[bundleID] = sourceID
+        store.scheduleSave(settings)
+        onChange?()
+    }
+
+    func setIndicator(enabled: Bool? = nil, duration: Double? = nil) {
+        if let enabled { settings.indicatorEnabled = enabled }
+        if let duration { settings.indicatorDuration = max(0.5, min(3.0, duration)) }
+        store.scheduleSave(settings)
+        onChange?()
     }
 
     /// 소스 ID → 표시 이름 (규칙 목록용)
@@ -114,8 +141,9 @@ final class InputSourceManager {
     }
 
     private func showIndicator() {
-        guard let current else { return }
-        indicator.show(badge: current.badge, korean: current.badge == "한")
+        guard settings.indicatorEnabled, let current else { return }
+        indicator.show(badge: current.badge, korean: current.badge == "한",
+                       duration: settings.indicatorDuration)
     }
 
     // MARK: - TIS 헬퍼
