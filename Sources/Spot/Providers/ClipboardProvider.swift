@@ -21,12 +21,14 @@ final class ClipboardProvider: SearchProvider {
             term = ""
         }
 
+        // 고정 항목 먼저, 각 그룹 안에서는 최신순
         let entries = ClipboardStore.shared.entries
+        let ordered = entries.filter(\.pinned) + entries.filter { !$0.pinned }
         let filtered: [ClipboardStore.Entry]
         if term.isEmpty {
-            filtered = Array(entries.prefix(30))
+            filtered = Array(ordered.prefix(30))
         } else {
-            filtered = entries.filter {
+            filtered = ordered.filter {
                 $0.text.localizedCaseInsensitiveContains(term)
             }.prefix(30).map { $0 }
         }
@@ -39,15 +41,22 @@ final class ClipboardProvider: SearchProvider {
                 .trimmingCharacters(in: .whitespacesAndNewlines)
                 .replacingOccurrences(of: "\n", with: " ⏎ ")
             let title = preview.count > 80 ? String(preview.prefix(80)) + "…" : preview
+            let time = formatter.localizedString(for: entry.date, relativeTo: Date())
             return SearchResult(
                 id: "clip:\(entry.date.timeIntervalSince1970)",
                 kind: .clipboard,
                 title: title,
-                subtitle: formatter.localizedString(for: entry.date, relativeTo: Date()),
-                symbolName: "doc.on.clipboard",
-                score: Score.clipboardTop - Double(index), // 최신순 유지
+                subtitle: entry.pinned ? "📌 \(time)" : time,
+                icon: ClipboardStore.shared.thumbnail(for: entry),
+                symbolName: entry.isImage ? "photo" : "doc.on.clipboard",
+                score: Score.clipboardTop - Double(index), // 고정 우선 + 최신순 유지
                 action: { modifiers in
-                    ClipboardStore.shared.copy(entry.text)
+                    // ⌘Enter → 고정 토글
+                    if modifiers.contains(.command) {
+                        ClipboardStore.shared.togglePin(entry)
+                        return
+                    }
+                    ClipboardStore.shared.copyEntry(entry)
                     if !modifiers.contains(.option) {
                         Paster.pasteToFrontmostApp()
                     }
