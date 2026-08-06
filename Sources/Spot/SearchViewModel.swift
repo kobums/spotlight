@@ -16,6 +16,11 @@ final class SearchViewModel: ObservableObject {
             self.results = elementResults
             self.selectedIndex = 0
         }
+        engine.onMenuResults = { [weak self] menuResults in
+            guard let self, MenuItemProvider.isMenuQuery(self.query) else { return }
+            self.results = menuResults
+            self.selectedIndex = 0
+        }
         engine.onFileResults = { [weak self] fileResults in
             guard let self else { return }
             let selectedID = self.results.indices.contains(self.selectedIndex)

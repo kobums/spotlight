@@ -6,11 +6,14 @@ final class SearchEngine {
     private let clipboardProvider = ClipboardProvider()
     private let webSearchProvider = WebSearchProvider()
     private let elementProvider = UIElementProvider()
+    private let menuProvider = MenuItemProvider()
+    private let emojiProvider = EmojiProvider()
 
     /// 동기 프로바이더 — 나열 순서가 정렬 전 기본 순서
     private lazy var syncProviders: [SearchProvider] = [
         CalculatorProvider(), webSearchProvider, AppProvider(), SystemSettingsProvider(),
         SystemActionProvider(), AwakeProvider(), DisplayProvider(), InputSourceProvider(),
+        BookmarkProvider(),
     ]
 
     /// 파일 검색(비동기) 결과 콜백
@@ -23,6 +26,12 @@ final class SearchEngine {
     var onElementResults: (([SearchResult]) -> Void)? {
         get { elementProvider.onResults }
         set { elementProvider.onResults = newValue }
+    }
+
+    /// 메뉴 항목 검색(비동기) 결과 콜백 — 전용 모드라 기존 결과를 통째로 교체
+    var onMenuResults: (([SearchResult]) -> Void)? {
+        get { menuProvider.onResults }
+        set { menuProvider.onResults = newValue }
     }
 
     /// 동기 프로바이더 결과 (즉시 표시)
@@ -40,10 +49,23 @@ final class SearchEngine {
             return clipboardProvider.results(for: trimmed)
         }
 
+        // 이모지 모드(":")도 전용
+        if EmojiProvider.isEmojiQuery(trimmed) {
+            fileProvider.search("")
+            return emojiProvider.results(for: trimmed)
+        }
+
         // UI 요소 모드(";")도 전용 — 결과는 onElementResults 콜백으로
         if UIElementProvider.isElementQuery(trimmed) {
             fileProvider.search("")
             elementProvider.search(trimmed)
+            return []
+        }
+
+        // 메뉴 항목 모드(">")도 전용 — 결과는 onMenuResults 콜백으로
+        if MenuItemProvider.isMenuQuery(trimmed) {
+            fileProvider.search("")
+            menuProvider.search(trimmed)
             return []
         }
 

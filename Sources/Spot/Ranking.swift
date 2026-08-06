@@ -19,6 +19,7 @@ enum Score {
     static let settingsBonus: Double = 1.5   // 앱(2.0)보다 낮은 우대
     static let fileExact: Double = 3.0
     static let filePenalty: Double = -0.5   // 파일은 앱보다 낮게
+    static let bookmarkPenalty: Double = -0.3  // 북마크는 앱보다 낮고 파일보다는 약간 위
 
     static let frecencyWeight: Double = 2.0
 }

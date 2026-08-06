@@ -9,6 +9,9 @@ enum ResultKind {
     case settingsPane
     case webSearch
     case uiElement
+    case menuItem
+    case emoji
+    case bookmark
 }
 
 struct SearchResult: Identifiable {
