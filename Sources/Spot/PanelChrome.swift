@@ -15,10 +15,14 @@ struct PanelChrome: ViewModifier {
                         .strokeBorder(Color.primary.opacity(0.2), lineWidth: 1)
                 )
         } else if #available(macOS 26.0, *) {
-            // Liquid Glass가 자체 림 라이트를 그리므로 별도 테두리 없음
             content
                 .background(GlassBackgroundView(cornerRadius: Self.cornerRadius))
                 .clipShape(RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous))
+                .overlay(
+                    // 뒤 배경과 밝기가 같으면 림 라이트만으로는 윤곽이 사라짐
+                    RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.15), lineWidth: 1)
+                )
         } else {
             content
                 .background(VisualEffectView())
@@ -43,9 +47,15 @@ struct PanelChrome: ViewModifier {
 struct GlassBackgroundView: NSViewRepresentable {
     let cornerRadius: CGFloat
 
+    /// 유리 아래에 까는 시스템 배경색 틴트. 순수 유리는 뒤 배경 밝기를 그대로
+    /// 통과시켜 흰 화면 위(특히 다크 모드의 흰 글자)에서 패널이 씻겨 보인다.
+    /// 알파를 높게 잡아 뒤가 어둡든 밝든 패널 외형이 거의 일정하게 유지되도록 한다.
+    private static let tint = NSColor.windowBackgroundColor.withAlphaComponent(0.85)
+
     func makeNSView(context: Context) -> NSGlassEffectView {
         let view = NSGlassEffectView()
         view.cornerRadius = cornerRadius
+        view.tintColor = Self.tint
         return view
     }
 
