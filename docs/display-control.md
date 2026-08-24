@@ -39,6 +39,36 @@ macOS는 DP/HDMI 오디오의 볼륨을 제어하지 못한다(`osascript -e 'ge
 `output volume: missing value`). 남은 통로인 DDC 볼륨 VCP(0x62)마저 NULL을 돌려주므로
 Spot도 MonitorControl도 쓸 수단이 없다. 해결은 하드웨어 쪽(모니터 버튼·USB DAC·헤드폰 단자).
 
+### 볼륨을 살리려고 시도한 것들 — 전부 실패 (2026-08-24)
+
+같은 걸 다시 파지 않도록 기록해 둔다. **아래는 모두 막다른 길로 확인됐다.**
+
+1. **LG 대체 I²C 소스 주소 0x50**. 최근 LG는 표준 0x51 대신 0x50을 쓴다고 알려져 있다
+   (ddcutil `--i2c-source-addr`, BetterDisplay #4246). chip/src/checksum 4개 조합을
+   각 3회씩 시험 — LG는 전부 NULL, DELL은 전부 write 실패. **가설 기각.**
+
+2. **`LG Monitor Controls` USB HID (0x043E/0x9A39)**. 이 모니터는 USB로 붙은 벤더 HID
+   인터페이스를 노출하며, 그 이름이 `HID I2C`다(CDC 시리얼 `/dev/cu.usbmodem<시리얼>`도 함께).
+   DP AUX가 막혔어도 USB로 DDC를 터널링할 수 있으리라 기대했다.
+   - 장치 열기·feature 리포트 읽기는 **성공**. 다만 돌아오는 64바이트는 PID·시리얼
+     문자열이 박힌 **정적 장치 식별 리포트**다.
+   - 모니터 OSD로 볼륨을 직접 조작하며 90초간 폴링해도 **한 바이트도 변하지 않았다** —
+     이 리포트는 볼륨 상태를 반영하지 않는다.
+   - 같은 VID/PID를 다룬 공개 구현체([gist](https://gist.github.com/shinyquagsire23/f6b2adef253c6c3ab557a4852bf3abad))의
+     프레이밍(64바이트, 프리픽스 `08 01 55 03 xx 00 03 37`, 페이로드 `51 82 01 <vcp> <cksum>`)을
+     재현해 VCP Get을 보냈으나, 프리픽스 4종 × output/feature 2종 × VCP 2종 = **16조합 전부 무응답**.
+     feature 리포트도 변화 없음(= 모니터가 아무 영향도 받지 않음).
+   - **다음에 이어서 하려면** 동작하는 구현체(Windows LG OnScreen Control 등)의 USB 트래픽을
+     캡처해 프레임을 역산해야 한다. 조합을 더 추측하는 건 무의미하다.
+
+3. **LG OnScreen Control**. 이 모델+Apple Silicon 조합에 설정이 표시되지 않는
+   [공개 버그](https://lgcommunity.us.com/discussion/16672/bug-32un880-apple-m1-onscreen-control-doesnt-display-settings)가 있어 기대값이 낮다. 미시도.
+
+**결론**: 이 장비에서 모니터 볼륨을 소프트웨어로 제어할 방법을 찾지 못했다. 현실적인 대안은
+가상 오디오 장치(BackgroundMusic 등으로 소프트웨어 감쇠 계층 삽입), 제어 가능한 출력 장치로
+전환(USB DAC·헤드폰), 또는 모니터 자체 버튼이다. Spot이 CoreAudio Audio Server Plug-In을
+직접 구현하는 건 관리자 권한·별도 프로세스·오디오 안정성 책임이 따라와 범위 밖으로 판단했다.
+
 ## 채택 범위
 
 - **밝기 제어** (주 사용): DDC 우선, 무응답 모니터는 감마 디밍 자동 폴백
