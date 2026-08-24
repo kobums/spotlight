@@ -46,7 +46,7 @@ swift run
 | `잠자기`, `다크모드`, `lock` | 시스템 액션 |
 | `디스플레이`, `배터리`, `키보드` | **시스템 설정 패널** 바로 열기 (Spotlight 방식) |
 | `깨어있기`, `awake 30분` | 잠자기 방지 세션 (Amphetamine 방식) |
-| `밝기 50`, `볼륨 +5`, `음소거` | 외장 **모니터 밝기·볼륨** 제어 (MonitorControl 방식, DDC) |
+| `밝기 50`, `볼륨 +5`, `음소거` | 외장 **모니터 밝기·볼륨** 제어 (MonitorControl 방식, DDC·감마) |
 | `입력규칙`, `한영` | 앱별 **한/영 자동 전환** + 전환 배지 (Input Source Pro 방식) |
 | `;저장`, `;뒤로` | 최전면 앱 **UI 요소 검색·클릭** (Shortcat 방식) |
 | `g`/`yt`/`gh`/`nv` + 검색어 | 웹 검색 (구글/유튜브/깃허브/네이버) |
@@ -66,14 +66,28 @@ swift run
 ### 키 리맵 — Karabiner-Elements 대체
 
 우측⌘→F18(한/영 전환), Caps Lock→좌⌃. macOS 내장 hidutil 리맵이라 권한 불필요.
+외장 키보드에 한해 F1·F2→밝기, F10~F12→음소거·볼륨 미디어 키도 매핑한다
+(HHKB에서 `fn+F1/F2` = 밝기, `fn+F11/F12` = 볼륨). 내장 키보드는 진짜 F키를 유지한다.
 메뉴바 → "키 리맵"으로 켜고 끈다.
+
+### 모니터 밝기 키 — MonitorControl 대체
+
+macOS는 제어 가능한 디스플레이가 없으면 밝기 키를 그냥 버린다. Spot이 그 키를 잡아
+외장 모니터를 직접 조절한다 — DDC가 되면 하드웨어 백라이트, 안 되면 감마 디밍.
+조절 대상은 마우스 포인터가 올라간 화면이고, macOS 기본 HUD가 안 뜨므로 직접 그린다.
+메뉴바 → "모니터 밝기·볼륨 키"로 켜고 끈다 (손쉬운 사용 권한 필요).
+
+> 볼륨은 모니터가 DDC 볼륨(VCP 0x62)을 지원할 때만 동작한다. DisplayPort/HDMI로
+> 나가는 오디오는 macOS가 볼륨을 제어할 수 없고, 모니터가 DDC 볼륨을 거부하면
+> 방법이 없다 — 그 경우 볼륨 키는 삼키지 않고 시스템에 그대로 넘긴다.
 
 상세 키맵과 각 기능 설명은 [docs/features.md](docs/features.md) 참조.
 
 ## 권한
 
 - 기본 기능(런처·계산·클립보드 복사·awake·키 리맵)은 **권한 불필요**
-- 힌트/스크롤/그리드 모드, UI 요소 검색, 클립보드 자동 붙여넣기는 **손쉬운 사용(Accessibility)** 권한 필요
+- 힌트/스크롤/그리드 모드, UI 요소 검색, 클립보드 자동 붙여넣기, 모니터 밝기·볼륨 키는
+  **손쉬운 사용(Accessibility)** 권한 필요
   — 첫 사용 시 시스템 프롬프트로 안내된다. 문제가 생기면 [docs/architecture.md의 권한·서명 절](docs/architecture.md#권한과-서명) 참조
 
 ## 문서
@@ -102,7 +116,9 @@ Sources/Spot/
 ├── Display/                              # 모니터 제어 (MonitorControl 방식)
 │   ├── DDCService.swift                  #   Apple Silicon DDC/CI (IOAVService dlsym)
 │   ├── GammaDimmer.swift                 #   DDC 불가 모니터 감마 디밍
-│   └── DisplayControlManager.swift       #   통합 계층·상태 캐시·핫플러그 재스캔
+│   ├── DisplayControlManager.swift       #   통합 계층·상태 캐시·핫플러그 재스캔
+│   ├── MediaKeyManager.swift             #   밝기·볼륨 미디어 키 이벤트 탭
+│   └── DisplayHUD.swift                  #   조절 표시기 (기본 HUD 대체)
 ├── InputSource/                          # 입력 소스 자동 전환 (Input Source Pro 방식)
 │   ├── InputSourceManager.swift          #   TIS 전환·앱별 규칙·활성화 감시
 │   └── InputSourceIndicator.swift        #   한/A 배지 오버레이 (캐럿 근처)

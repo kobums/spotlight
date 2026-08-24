@@ -14,6 +14,8 @@ final class KeyRemapManager {
     private static let f18: UInt64 = 0x70000006D
     private static let capsLock: UInt64 = 0x700000039
     private static let leftControl: UInt64 = 0x7000000E0
+    private static let f1: UInt64 = 0x70000003A
+    private static let f2: UInt64 = 0x70000003B
     private static let f10: UInt64 = 0x700000043
     private static let f11: UInt64 = 0x700000044
     private static let f12: UInt64 = 0x700000045
@@ -22,6 +24,8 @@ final class KeyRemapManager {
     private static let mute: UInt64 = 0xC000000E2
     private static let volumeUp: UInt64 = 0xC000000E9
     private static let volumeDown: UInt64 = 0xC000000EA
+    private static let brightnessUp: UInt64 = 0xC0000006F
+    private static let brightnessDown: UInt64 = 0xC00000070
 
     /// 전 기기 공통 룰. caps→⌃도 전역 적용 — HHKB는 해당 위치가 하드웨어
     /// Control이라 caps_lock 자체를 보내지 않으므로 영향이 없다.
@@ -30,10 +34,15 @@ final class KeyRemapManager {
         (capsLock, leftControl),
     ]
 
-    /// 외장(비 Apple) 키보드 전용 룰 — F10~F12를 Apple 키보드처럼 미디어 키로.
-    /// HHKB는 F키가 Fn 조합으로만 나오므로 fn+F11/F12 = 볼륨이 된다.
-    /// 내장 키보드에는 적용하지 않아 fn+F11/F12로 진짜 F키를 계속 쓸 수 있다.
+    /// 외장(비 Apple) 키보드 전용 룰 — F1·F2·F10~F12를 Apple 키보드처럼 미디어 키로.
+    /// HHKB는 F키가 Fn 조합으로만 나오므로 fn+F1/F2 = 밝기, fn+F11/F12 = 볼륨이 된다.
+    /// 내장 키보드에는 적용하지 않아 fn+F1/F2로 진짜 F키를 계속 쓸 수 있다.
+    ///
+    /// 밝기 키는 macOS가 제어할 디스플레이가 없으면 그냥 무시되므로,
+    /// 실제 조절은 MediaKeyManager가 이 키를 잡아 외장 모니터로 넘긴다.
     private let externalRules: [(src: UInt64, dst: UInt64)] = [
+        (f1, brightnessDown),
+        (f2, brightnessUp),
         (f10, mute),
         (f11, volumeDown),
         (f12, volumeUp),

@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var loginMenuItem: NSMenuItem!
     private var awakeMenuItem: NSMenuItem!
     private var keyRemapMenuItem: NSMenuItem!
+    private var mediaKeyMenuItem: NSMenuItem!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         panelController = PanelController()
@@ -31,6 +32,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         keyRemapMenuItem = NSMenuItem(title: "키 리맵 (우측⌘ 한/영 · Caps→⌃)", action: #selector(toggleKeyRemap), keyEquivalent: "")
         keyRemapMenuItem.target = self
         menu.addItem(keyRemapMenuItem)
+        mediaKeyMenuItem = NSMenuItem(title: "모니터 밝기·볼륨 키", action: #selector(toggleMediaKeys), keyEquivalent: "")
+        mediaKeyMenuItem.target = self
+        menu.addItem(mediaKeyMenuItem)
         menu.addItem(.separator())
         let settingsItem = NSMenuItem(title: "설정…", action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
@@ -58,6 +62,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         LoginItemManager.ensureRegisteredOnFirstLaunch()
         KeyRemapManager.shared.start()
         InputSourceManager.shared.start()
+        MediaKeyManager.shared.start()
 
         AwakeSessionManager.shared.onChange = { [weak self] in
             self?.updateStatusIcon()
@@ -74,6 +79,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             awakeMenuItem.state = .off
         }
         keyRemapMenuItem.state = KeyRemapManager.shared.isEnabled ? .on : .off
+
+        let mediaKeys = MediaKeyManager.shared
+        // 앱 실행 뒤에 권한을 준 경우를 위해 메뉴를 열 때마다 한 번 더 붙여 본다
+        mediaKeys.start()
+        mediaKeyMenuItem.state = mediaKeys.isEnabled ? .on : .off
+        // 켜져 있는데 탭이 안 붙었으면 손쉬운 사용 권한이 없다는 뜻 — 이유를 드러낸다
+        mediaKeyMenuItem.title = mediaKeys.isEnabled && !mediaKeys.isRunning
+            ? "모니터 밝기·볼륨 키 (손쉬운 사용 권한 필요)"
+            : "모니터 밝기·볼륨 키"
     }
 
     /// 깨어있기 세션 중에는 메뉴바 아이콘을 컵으로 바꿔 상태를 드러낸다
@@ -125,6 +139,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func toggleKeyRemap() {
         KeyRemapManager.shared.setEnabled(!KeyRemapManager.shared.isEnabled)
+    }
+
+    /// 꺼져 있으면 켜고, 켜져 있는데 권한이 없어 탭이 안 붙었으면 다시 권한을 요청한다
+    @objc private func toggleMediaKeys() {
+        let manager = MediaKeyManager.shared
+        if manager.isEnabled && manager.isRunning {
+            manager.setEnabled(false)
+        } else {
+            manager.setEnabled(true)
+        }
     }
 
     @objc private func toggleAwake() {
