@@ -35,6 +35,14 @@ final class GammaDimmer {
         reapplyAll()  // 전체 리셋 후 다른 모니터 것만 되살린다
     }
 
+    /// 저장된 스케일만 지운다(화면 원복은 호출자가 CGDisplayRestoreColorSyncSettings로).
+    /// DDC로 승격된 모니터의 감마를 걷어낼 때 쓴다 — 안 걷으면 감마와 백라이트가
+    /// 겹쳐 이중으로 어두워진다. 지울 게 있었으면 true.
+    @discardableResult
+    func forget(_ display: CGDirectDisplayID) -> Bool {
+        scales.removeValue(forKey: display) != nil
+    }
+
     private func apply(display: CGDirectDisplayID, percent: Int) {
         let scale = CGGammaValue(percent) / 100
         CGSetDisplayTransferByFormula(display,

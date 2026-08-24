@@ -19,6 +19,20 @@ enum DDCService {
     static let muteOn = 1
     static let muteOff = 2
 
+    // I²C 파라미터 (m1ddc 기준)
+    private static let chipAddress: UInt32 = 0x37
+    private static let sourceAddress: UInt32 = 0x51
+    private static let ddcWait: UInt32 = 10_000
+
+    /// 요청을 몇 번 보낼지. **1이면 안 된다** — 이 값이 이 파일에서 가장 중요한 상수다.
+    ///
+    /// DDC 요청을 1회만 보내면 LG HDR 4K는 대기 시간을 10·50·80ms 어느 것으로 늘려도
+    /// 0/5로 NULL 메시지(거부)를 돌려준다. 2회 보내면 5/5로 성공한다 (2026-08-24 실측).
+    /// m1ddc의 DDC_ITERATIONS=2 와 "Depending on display this must be set higher"
+    /// 주석이 같은 이유다. 초기 구현이 1회만 보내서 모든 DDC 읽기가 실패했고,
+    /// 그 결과 멀쩡한 모니터까지 전부 감마 디밍으로 강등됐다.
+    private static let ddcIterations = 2
+
     private typealias CreateFn = @convention(c) (CFAllocator?, io_service_t) -> Unmanaged<CFTypeRef>?
     private typealias TransferFn = @convention(c) (CFTypeRef?, UInt32, UInt32, UnsafeMutableRawPointer?, UInt32) -> IOReturn
 
@@ -80,49 +94,54 @@ enum DDCService {
 
     // MARK: - VCP 읽기/쓰기
 
-    /// VCP 값 읽기. DDC는 타이밍에 민감해 3회 재시도한다.
-    /// 응답 헤더가 NULL 메시지(길이 바이트 0x80)면 모니터가 해당 기능을
-    /// 지원하지 않는다는 뜻이라 재시도 없이 실패로 확정한다.
+    /// VCP 값 읽기. 요청을 ddcIterations 회 보낸 뒤 응답을 읽는다.
+    ///
+    /// 실패는 두 가지로 갈린다. I²C write 자체가 실패하면 그 링크는 DDC를 못 쓰는
+    /// 경로다(HDMI 직결·독 경유 등). 응답 헤더가 NULL 메시지(길이 바이트 0x80)면
+    /// 모니터가 그 기능을 지원하지 않는다는 뜻이다. 둘 다 재시도해도 달라지지 않는다.
     static func read(_ avService: CFTypeRef, vcp: UInt8) -> (current: Int, max: Int)? {
         guard let symbols else { return nil }
-        for _ in 0..<3 {
-            var request: [UInt8] = [0x82, 0x01, vcp, 0]
-            request[3] = 0x6E ^ 0x51 ^ request[0] ^ request[1] ^ request[2]
+        // 체크섬은 m1ddc와 동일하게 소스 주소를 넣지 않는다 (쓰기는 넣는다 — 아래 참조).
+        // 이 모니터에서는 넣든 빼든 동작하지만, 여러 기종에서 검증된 쪽에 맞춘다.
+        var request: [UInt8] = [0x82, 0x01, vcp, 0]
+        request[3] = 0x6E ^ request[0] ^ request[1] ^ request[2]
+        let length = UInt32(request.count)
+
+        for _ in 0..<ddcIterations {
+            usleep(ddcWait)
             let wrote = request.withUnsafeMutableBytes {
-                symbols.write(avService, 0x37, 0x51, $0.baseAddress, 4)
+                symbols.write(avService, chipAddress, sourceAddress, $0.baseAddress, length)
             }
-            guard wrote == KERN_SUCCESS else { return nil }  // I²C 자체가 안 되는 링크
-            usleep(50_000)
-            var reply = [UInt8](repeating: 0, count: 12)
-            let readOK = reply.withUnsafeMutableBytes {
-                symbols.read(avService, 0x37, 0x51, $0.baseAddress, 12)
-            }
-            if readOK == KERN_SUCCESS {
-                if reply[1] == 0x80 { return nil }           // NULL 메시지 = 미지원
-                if reply[2] == 0x02 {
-                    return (current: Int(reply[8]) << 8 | Int(reply[9]),
-                            max: Int(reply[6]) << 8 | Int(reply[7]))
-                }
-            }
-            usleep(50_000)
+            guard wrote == KERN_SUCCESS else { return nil }
         }
-        return nil
+
+        usleep(ddcWait)
+        var reply = [UInt8](repeating: 0, count: 12)
+        let readOK = reply.withUnsafeMutableBytes {
+            symbols.read(avService, chipAddress, sourceAddress, $0.baseAddress, 12)
+        }
+        guard readOK == KERN_SUCCESS, reply[1] != 0x80, reply[2] == 0x02 else { return nil }
+        return (current: Int(reply[8]) << 8 | Int(reply[9]),
+                max: Int(reply[6]) << 8 | Int(reply[7]))
     }
 
-    /// VCP 값 쓰기
+    /// VCP 값 쓰기. 읽기와 같은 이유로 ddcIterations 회 보낸다 (같은 값을 두 번
+    /// 세팅하는 것이라 멱등하다). 쓰기 체크섬에는 소스 주소가 들어간다 — m1ddc와 동일.
     @discardableResult
     static func write(_ avService: CFTypeRef, vcp: UInt8, value: Int) -> Bool {
         guard let symbols else { return false }
         var packet: [UInt8] = [0x84, 0x03, vcp, UInt8((value >> 8) & 0xFF), UInt8(value & 0xFF), 0]
-        packet[5] = 0x6E ^ 0x51 ^ packet[0] ^ packet[1] ^ packet[2] ^ packet[3] ^ packet[4]
-        for _ in 0..<3 {
+        packet[5] = 0x6E ^ UInt8(sourceAddress) ^ packet[0] ^ packet[1] ^ packet[2] ^ packet[3] ^ packet[4]
+        let length = UInt32(packet.count)
+
+        for _ in 0..<ddcIterations {
+            usleep(ddcWait)
             let result = packet.withUnsafeMutableBytes {
-                symbols.write(avService, 0x37, 0x51, $0.baseAddress, 6)
+                symbols.write(avService, chipAddress, sourceAddress, $0.baseAddress, length)
             }
-            usleep(20_000)
-            if result == KERN_SUCCESS { return true }
+            guard result == KERN_SUCCESS else { return false }
         }
-        return false
+        return true
     }
 
     // MARK: - 모니터 식별

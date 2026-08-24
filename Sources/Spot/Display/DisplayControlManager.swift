@@ -123,6 +123,12 @@ final class DisplayControlManager {
                 muted: false))
         }
 
+        // DDC로 승격된 화면에 감마 디밍이 남아 있으면 백라이트와 겹쳐 이중으로
+        // 어두워진다. 걷어내고 나머지만 되살린다.
+        var promoted = false
+        for displayID in claimed where gamma.forget(displayID) { promoted = true }
+        if promoted { CGDisplayRestoreColorSyncSettings() }
+
         monitors = result
         gamma.reapplyAll()
     }
