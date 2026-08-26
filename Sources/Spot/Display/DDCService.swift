@@ -12,6 +12,7 @@ import IOKit
 enum DDCService {
     struct VCP {
         static let brightness: UInt8 = 0x10
+        static let contrast: UInt8 = 0x12
         static let volume: UInt8 = 0x62
         static let mute: UInt8 = 0x8D
     }

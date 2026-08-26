@@ -23,7 +23,11 @@ final class DisplayControlManager {
         let displayID: CGDirectDisplayID?
         var brightness: Int   // 0~100 캐시
         var volume: Int?      // DDC 모니터 중 볼륨 VCP를 지원하는 것만, 0~100 캐시
+        var contrast: Int?    // DDC 모니터 중 대비 VCP를 지원하는 것만, 0~100 캐시
         var muted: Bool
+        /// 결합 디밍 — DDC 밝기 0 밑으로 계속 내릴 때의 감마 스케일 (100 = 없음).
+        /// MonitorControl의 "hardware+software dimming" 방식. DDC 모니터 전용.
+        var swDim: Int = 100
 
         var isDDC: Bool { if case .ddc = method { return true }; return false }
         var methodLabel: String { isDDC ? "DDC" : "감마" }
@@ -47,6 +51,7 @@ final class DisplayControlManager {
     private var rescanWork: DispatchWorkItem?
 
     private init() {
+        AudioOutputMonitor.shared.start()
         rescan()
         // 모니터 연결/해제·해상도 변경 감지 → 재스캔 (연속 이벤트 디바운스)
         CGDisplayRegisterReconfigurationCallback({ _, _, userInfo in
@@ -72,11 +77,12 @@ final class DisplayControlManager {
             let probes: [DDCProbe] = DDCService.externalDisplays().map { display in
                 // 밝기가 읽히는 서비스만 하드웨어 제어로 채택
                 let brightness = DDCService.read(display.avService, vcp: DDCService.VCP.brightness)
-                guard let brightness else { return DDCProbe(display: display, brightness: nil, volume: nil, muted: false) }
+                guard let brightness else { return DDCProbe(display: display, brightness: nil, volume: nil, contrast: nil, muted: false) }
                 return DDCProbe(
                     display: display,
                     brightness: Self.percent(brightness),
                     volume: DDCService.read(display.avService, vcp: DDCService.VCP.volume).map(Self.percent),
+                    contrast: DDCService.read(display.avService, vcp: DDCService.VCP.contrast).map(Self.percent),
                     muted: DDCService.read(display.avService, vcp: DDCService.VCP.mute)
                         .map { $0.current == DDCService.muteOn } ?? false)
             }
@@ -88,6 +94,7 @@ final class DisplayControlManager {
         let display: DDCService.ExternalDisplay
         let brightness: Int?   // nil = DDC 미지원
         let volume: Int?
+        let contrast: Int?
         let muted: Bool
     }
 
@@ -109,6 +116,7 @@ final class DisplayControlManager {
                 displayID: displayID,
                 brightness: brightness,
                 volume: probe.volume,
+                contrast: probe.contrast,
                 muted: probe.muted))
         }
 
@@ -120,6 +128,7 @@ final class DisplayControlManager {
                 displayID: displayID,
                 brightness: gamma.brightness(of: displayID),
                 volume: nil,
+                contrast: nil,
                 muted: false))
         }
 
@@ -145,7 +154,17 @@ final class DisplayControlManager {
     /// 밝기 설정. target이 nil이면 전체. relative면 value를 증감량으로 해석.
     func setBrightness(_ value: Int, target: String?, relative: Bool) {
         for index in matching(target) {
+            // 절대값 지정은 결합 디밍을 걷어내고 그 값으로 — "밝기 50"은 항상 백라이트 50
+            if !relative { setSwDim(at: index, to: 100) }
             applyBrightness(at: index, to: relative ? monitors[index].brightness + value : value)
+        }
+    }
+
+    /// 대비 설정 (DDC 대비 VCP를 지원하는 모니터만)
+    func setContrast(_ value: Int, target: String?, relative: Bool) {
+        for index in matching(target) {
+            guard let current = monitors[index].contrast else { continue }
+            applyContrast(at: index, to: relative ? current + value : value)
         }
     }
 
@@ -190,10 +209,13 @@ final class DisplayControlManager {
         return feedback
     }
 
-    /// 볼륨 상대 조절. DDC 볼륨을 지원하는 모니터가 없으면 nil.
+    /// 볼륨 미디어 키. 대상은 커서 위치가 아니라 **기본 오디오 출력 장치와 이름이
+    /// 일치하는 모니터** (MonitorControl의 오디오 장치 매칭 방식) — 소리는 커서와
+    /// 무관하게 한 곳으로 나가므로 밝기와 같은 화면별 라우팅을 쓰면 안 된다.
+    /// 매칭 모니터가 없으면 nil — 호출자가 이벤트를 시스템에 넘긴다 (내장 스피커 등).
     @discardableResult
-    func adjustVolume(by delta: Int, displayID: CGDirectDisplayID?) -> Feedback? {
-        let indices = targeting(displayID).filter { monitors[$0].volume != nil }
+    func adjustVolume(by delta: Int) -> Feedback? {
+        let indices = audioTargets().filter { monitors[$0].volume != nil }
         guard !indices.isEmpty else { return nil }
         var feedback: Feedback?
         for index in indices {
@@ -206,10 +228,10 @@ final class DisplayControlManager {
         return feedback
     }
 
-    /// 음소거 토글. DDC 모니터가 없으면 nil.
+    /// 음소거 미디어 키. 볼륨과 같은 오디오 장치 매칭. 매칭 없으면 nil.
     @discardableResult
-    func toggleMute(displayID: CGDirectDisplayID?) -> Feedback? {
-        let indices = targeting(displayID).filter { monitors[$0].isDDC }
+    func toggleMute() -> Feedback? {
+        let indices = audioTargets()
         guard !indices.isEmpty else { return nil }
         var feedback: Feedback?
         for index in indices {
@@ -224,6 +246,15 @@ final class DisplayControlManager {
         return feedback
     }
 
+    /// 기본 오디오 출력 장치와 이름이 일치하는 DDC 모니터 (공백·숫자 무시 비교)
+    private func audioTargets() -> [Int] {
+        guard let deviceName = AudioOutputMonitor.shared.deviceName else { return [] }
+        let device = AudioOutputMonitor.normalized(deviceName)
+        return monitors.indices.filter {
+            monitors[$0].isDDC && AudioOutputMonitor.normalized(monitors[$0].name) == device
+        }
+    }
+
     /// 해당 디스플레이의 모니터 인덱스. 못 찾으면 전체를 대상으로 한다.
     private func targeting(_ displayID: CGDirectDisplayID?) -> [Int] {
         guard let displayID else { return Array(monitors.indices) }
@@ -234,19 +265,51 @@ final class DisplayControlManager {
     // MARK: - 적용 (메인에서 캐시 갱신 → 큐에서 하드웨어 쓰기)
 
     /// 새 밝기를 캐시에 반영하고 하드웨어 쓰기를 예약. 실제 적용된 값을 돌려준다.
+    ///
+    /// DDC 모니터는 결합 디밍(MonitorControl 방식)을 지원한다: 요청 값이 0 밑이면
+    /// 백라이트 최저에서 멈추지 않고 감마로 이어서 어두워지고, 올릴 때는 감마부터
+    /// 원복한 뒤 백라이트를 올린다. 감마가 남아 있는 동안 밝기 캐시는 0이다.
     @discardableResult
     private func applyBrightness(at index: Int, to value: Int) -> Int {
-        // 감마는 화면이 완전히 검어지면 조작 불능이 되므로 하한을 둔다
-        let floor = monitors[index].isDDC ? 0 : GammaDimmer.minPercent
-        let clamped = max(floor, min(100, value))
-        monitors[index].brightness = clamped
         switch monitors[index].method {
         case .ddc(let service):
-            queue.async { DDCService.write(service, vcp: DDCService.VCP.brightness, value: clamped) }
+            var value = value
+            // 올리기: 남아 있는 감마 디밍을 먼저 걷어낸다
+            if value > 0, monitors[index].swDim < 100 {
+                let restored = min(100, monitors[index].swDim + value)
+                value -= restored - monitors[index].swDim
+                setSwDim(at: index, to: restored)
+            }
+            let clamped = max(0, min(100, value))
+            // 내리기: DDC 0 밑으로 남는 몫은 감마로
+            if value < 0 {
+                setSwDim(at: index, to: monitors[index].swDim + value)
+            }
+            if clamped != monitors[index].brightness || value >= 0 {
+                monitors[index].brightness = clamped
+                queue.async { DDCService.write(service, vcp: DDCService.VCP.brightness, value: clamped) }
+            }
+            return clamped
         case .gamma(let displayID):
+            // 감마는 화면이 완전히 검어지면 조작 불능이 되므로 하한을 둔다
+            let clamped = max(GammaDimmer.minPercent, min(100, value))
+            monitors[index].brightness = clamped
+            gamma.setBrightness(clamped, of: displayID)
+            return clamped
+        }
+    }
+
+    /// DDC 모니터의 결합 디밍 감마 적용 (displayID를 모르면 조용히 무시)
+    private func setSwDim(at index: Int, to value: Int) {
+        guard let displayID = monitors[index].displayID else { return }
+        let clamped = max(GammaDimmer.minPercent, min(100, value))
+        guard clamped != monitors[index].swDim else { return }
+        monitors[index].swDim = clamped
+        if clamped == 100 {
+            gamma.reset(displayID)
+        } else {
             gamma.setBrightness(clamped, of: displayID)
         }
-        return clamped
     }
 
     @discardableResult
@@ -256,6 +319,15 @@ final class DisplayControlManager {
         monitors[index].volume = clamped
         monitors[index].muted = false
         queue.async { DDCService.write(service, vcp: DDCService.VCP.volume, value: clamped) }
+        return clamped
+    }
+
+    @discardableResult
+    private func applyContrast(at index: Int, to value: Int) -> Int {
+        guard case .ddc(let service) = monitors[index].method else { return monitors[index].contrast ?? 0 }
+        let clamped = max(0, min(100, value))
+        monitors[index].contrast = clamped
+        queue.async { DDCService.write(service, vcp: DDCService.VCP.contrast, value: clamped) }
         return clamped
     }
 

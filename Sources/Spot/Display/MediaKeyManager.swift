@@ -121,19 +121,22 @@ final class MediaKeyManager {
     }
 
     /// 실제 제어 수행. 제어 대상이 없으면 false를 돌려 이벤트를 시스템에 넘긴다.
+    ///
+    /// 대상 선정이 키마다 다르다: 밝기는 **커서가 올라간 화면**(화면별 속성),
+    /// 볼륨·음소거는 **기본 오디오 출력 장치와 이름이 일치하는 모니터**(소리는
+    /// 커서와 무관하게 한 곳으로 나간다) — MonitorControl의 라우팅과 동일.
     private func perform(_ key: MediaKey, modifiers: NSEvent.ModifierFlags) -> Bool {
         let manager = DisplayControlManager.shared
         let fine = modifiers.contains(.shift) && modifiers.contains(.option)
         let step = fine ? Self.fineStep : Self.coarseStep
-        let displayID = Self.displayUnderCursor()
 
         let feedback: DisplayControlManager.Feedback?
         switch key {
-        case .brightnessUp:   feedback = manager.adjustBrightness(by: step, displayID: displayID)
-        case .brightnessDown: feedback = manager.adjustBrightness(by: -step, displayID: displayID)
-        case .soundUp:        feedback = manager.adjustVolume(by: step, displayID: displayID)
-        case .soundDown:      feedback = manager.adjustVolume(by: -step, displayID: displayID)
-        case .mute:           feedback = manager.toggleMute(displayID: displayID)
+        case .brightnessUp:   feedback = manager.adjustBrightness(by: step, displayID: Self.displayUnderCursor())
+        case .brightnessDown: feedback = manager.adjustBrightness(by: -step, displayID: Self.displayUnderCursor())
+        case .soundUp:        feedback = manager.adjustVolume(by: step)
+        case .soundDown:      feedback = manager.adjustVolume(by: -step)
+        case .mute:           feedback = manager.toggleMute()
         }
 
         guard let feedback else { return false }
