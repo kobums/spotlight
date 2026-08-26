@@ -218,6 +218,21 @@ final class DisplayControlManager {
         return monitors.indices.filter { monitors[$0].name.lowercased().contains(lowered) }
     }
 
+    // MARK: - 메뉴바 슬라이더용 제어 (HUD 없음 — 슬라이더 자체가 피드백)
+
+    /// 밝기 슬라이더. 절대값이므로 결합 디밍은 걷어낸다.
+    func setBrightness(at index: Int, to value: Int) {
+        guard monitors.indices.contains(index) else { return }
+        setSwDim(at: index, to: 100)
+        applyBrightness(at: index, to: value)
+    }
+
+    /// 볼륨 슬라이더 (음소거 상태면 해제된다)
+    func setVolume(at index: Int, to value: Int) {
+        guard monitors.indices.contains(index) else { return }
+        applyVolume(at: index, to: value)
+    }
+
     // MARK: - 미디어 키용 제어 (디스플레이 대상)
 
     /// 밝기 상대 조절. displayID가 nil이거나 못 찾으면 전체 모니터.

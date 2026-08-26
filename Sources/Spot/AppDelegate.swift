@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var awakeMenuItem: NSMenuItem!
     private var keyRemapMenuItem: NSMenuItem!
     private var mediaKeyMenuItem: NSMenuItem!
+    private let displayMenuSection = DisplayMenuSection()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         panelController = PanelController()
@@ -70,6 +71,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func menuWillOpen(_ menu: NSMenu) {
+        // 모니터별 밝기·볼륨 슬라이더 (MonitorControl 스타일) — 열 때마다 최신 값으로
+        displayMenuSection.refresh(menu: menu)
         loginMenuItem.state = LoginItemManager.isEnabled ? .on : .off
         if let state = AwakeSessionManager.shared.stateDescription {
             awakeMenuItem.title = "깨어있기 해제 (\(state))"
