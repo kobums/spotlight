@@ -35,7 +35,7 @@ final class DisplayControlManager {
 
     /// 미디어 키 HUD 등에 돌려줄 조작 결과
     struct Feedback {
-        enum Kind { case brightness, volume }
+        enum Kind { case brightness, volume, contrast }
         let kind: Kind
         let name: String
         let value: Int
@@ -48,6 +48,8 @@ final class DisplayControlManager {
 
     private let queue = DispatchQueue(label: "spot.display", qos: .userInitiated)
     private let gamma = GammaDimmer()
+    /// 조작 피드백 표시기 — 미디어 키·런처 명령 공용 (패널이 하나라 첫 대상 모니터에 띄운다)
+    private let hud = DisplayHUD()
     private var rescanWork: DispatchWorkItem?
 
     private init() {
@@ -153,34 +155,60 @@ final class DisplayControlManager {
 
     /// 밝기 설정. target이 nil이면 전체. relative면 value를 증감량으로 해석.
     func setBrightness(_ value: Int, target: String?, relative: Bool) {
+        var feedback: Feedback?
         for index in matching(target) {
             // 절대값 지정은 결합 디밍을 걷어내고 그 값으로 — "밝기 50"은 항상 백라이트 50
             if !relative { setSwDim(at: index, to: 100) }
-            applyBrightness(at: index, to: relative ? monitors[index].brightness + value : value)
+            let applied = applyBrightness(at: index, to: relative ? monitors[index].brightness + value : value)
+            if feedback == nil {
+                feedback = Feedback(kind: .brightness, name: monitors[index].name,
+                                    value: applied, muted: false, displayID: monitors[index].displayID)
+            }
         }
+        if let feedback { hud.show(feedback) }
     }
 
     /// 대비 설정 (DDC 대비 VCP를 지원하는 모니터만)
     func setContrast(_ value: Int, target: String?, relative: Bool) {
+        var feedback: Feedback?
         for index in matching(target) {
             guard let current = monitors[index].contrast else { continue }
-            applyContrast(at: index, to: relative ? current + value : value)
+            let applied = applyContrast(at: index, to: relative ? current + value : value)
+            if feedback == nil {
+                feedback = Feedback(kind: .contrast, name: monitors[index].name,
+                                    value: applied, muted: false, displayID: monitors[index].displayID)
+            }
         }
+        if let feedback { hud.show(feedback) }
     }
 
     /// 볼륨 설정 (DDC 볼륨을 지원하는 모니터만)
     func setVolume(_ value: Int, target: String?, relative: Bool) {
+        var feedback: Feedback?
         for index in matching(target) {
             guard let current = monitors[index].volume else { continue }
-            applyVolume(at: index, to: relative ? current + value : value)
+            let applied = applyVolume(at: index, to: relative ? current + value : value)
+            if feedback == nil {
+                feedback = Feedback(kind: .volume, name: monitors[index].name,
+                                    value: applied, muted: false, displayID: monitors[index].displayID)
+            }
         }
+        if let feedback { hud.show(feedback) }
     }
 
     /// 음소거 토글 (DDC 모니터만)
     func toggleMute(target: String?) {
+        var feedback: Feedback?
         for index in matching(target) where monitors[index].isDDC {
-            applyMute(at: index, to: !monitors[index].muted)
+            let muted = !monitors[index].muted
+            applyMute(at: index, to: muted)
+            if feedback == nil {
+                feedback = Feedback(kind: .volume, name: monitors[index].name,
+                                    value: monitors[index].volume ?? 0, muted: muted,
+                                    displayID: monitors[index].displayID)
+            }
         }
+        if let feedback { hud.show(feedback) }
     }
 
     /// 이름 토큰으로 모니터 선택 ("lg" → "LG HDR 4K"). nil이면 전체.
@@ -206,6 +234,7 @@ final class DisplayControlManager {
                                     value: value, muted: false, displayID: monitors[index].displayID)
             }
         }
+        if let feedback { hud.show(feedback) }
         return feedback
     }
 
@@ -225,6 +254,7 @@ final class DisplayControlManager {
                                     value: value, muted: false, displayID: monitors[index].displayID)
             }
         }
+        if let feedback { hud.show(feedback) }
         return feedback
     }
 
@@ -243,6 +273,7 @@ final class DisplayControlManager {
                                     displayID: monitors[index].displayID)
             }
         }
+        if let feedback { hud.show(feedback) }
         return feedback
     }
 

@@ -69,6 +69,7 @@ private struct HUDView: View {
     private var symbol: String {
         switch feedback.kind {
         case .brightness: return "sun.max.fill"
+        case .contrast: return "circle.lefthalf.filled"
         case .volume: return feedback.muted || feedback.value == 0
             ? "speaker.slash.fill" : "speaker.wave.3.fill"
         }

@@ -168,7 +168,8 @@ Sources/Spot/Display/
 │                             밝기/볼륨/대비 get/set(0~100), 결합 디밍, 상태 캐시
 ├── AudioOutputMonitor.swift  CoreAudio 기본 출력 장치 감시 — 볼륨 키 대상 매칭 근거
 ├── MediaKeyManager.swift     밝기·볼륨 미디어 키 이벤트 탭 → 위 계층으로 라우팅
-├── DisplayHUD.swift          조절 표시기 (macOS 기본 HUD가 안 뜨는 경우를 대신)
+├── DisplayHUD.swift          조절 표시기 — 미디어 키·런처 명령 공용, DisplayControlManager가 띄운다
+│                             (DDC 밝기 쓰기는 모니터 자체 OSD도 안 뜨므로 유일한 피드백)
 └── (Providers/)DisplayProvider.swift  런처 명령 파싱 (AwakeProvider 패턴)
 ```
 

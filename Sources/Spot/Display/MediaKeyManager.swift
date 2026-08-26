@@ -34,7 +34,6 @@ final class MediaKeyManager {
 
     private let enabledKey = "mediaKeysEnabled"
     private let promptedKey = "mediaKeysPermissionPrompted"
-    private let hud = DisplayHUD()
     private var tap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var permissionPoll: Timer?
@@ -171,9 +170,8 @@ final class MediaKeyManager {
         case .mute:           feedback = manager.toggleMute()
         }
 
-        guard let feedback else { return false }
-        hud.show(feedback)
-        return true
+        // HUD는 DisplayControlManager가 직접 띄운다 (런처 명령과 공용)
+        return feedback != nil
     }
 
     /// 마우스 포인터가 올라가 있는 디스플레이 — 조절 대상을 그 화면으로 좁힌다
