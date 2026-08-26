@@ -99,11 +99,11 @@ final class DisplayProvider: SearchProvider {
             return [SearchResult(
                 id: "display:volume:none", kind: .systemAction,
                 title: "볼륨 제어 가능한 모니터 없음",
-                subtitle: "DDC 하드웨어 제어가 되는 모니터만 지원됩니다",
+                subtitle: "DDC 하드웨어 제어가 되는 모니터만 지원됩니다 · " + Self.volumeRouteDiagnosis(),
                 symbolName: "speaker.slash", score: score, action: { _ in })]
         }
         guard let value else {
-            return capable.map { index in
+            var results = capable.map { index in
                 let monitor = manager.monitors[index]
                 let volumeText = monitor.muted ? "음소거됨" : "볼륨 \(monitor.volume ?? 0)%"
                 return SearchResult(
@@ -112,6 +112,14 @@ final class DisplayProvider: SearchProvider {
                     subtitle: "\"볼륨 30\" 또는 \"볼륨 +5\"로 조절",
                     symbolName: "speaker.wave.2", score: score, action: { _ in })
             }
+            // 진단 행 — 볼륨 미디어 키가 지금 어디로 가는지 (다른 머신에서
+            // "키가 안 먹는" 문제를 원격으로 판별할 수 있는 유일한 창구)
+            results.append(SearchResult(
+                id: "display:volume:route", kind: .systemAction,
+                title: "볼륨 키 → " + Self.volumeRouteTargets(),
+                subtitle: Self.volumeRouteDiagnosis(),
+                symbolName: "keyboard", score: score - 0.1, action: { _ in }))
+            return results
         }
         let valueText = relative ? (value >= 0 ? "+\(value)" : "\(value)") : "\(value)%"
         let names = capable.map { manager.monitors[$0].name }.joined(separator: ", ")
@@ -167,6 +175,23 @@ final class DisplayProvider: SearchProvider {
             symbolName: anyMuted ? "speaker.slash.fill" : "speaker.slash",
             score: score,
             action: { _ in DisplayControlManager.shared.toggleMute(target: target) })]
+    }
+
+    /// 볼륨 키가 향하는 곳 — 매칭/폴백된 모니터 이름들, 없으면 "시스템"
+    private static func volumeRouteTargets() -> String {
+        let names = DisplayControlManager.shared.volumeKeyTargetNames()
+        return names.isEmpty ? "시스템 (모니터 대상 아님)" : names.joined(separator: ", ")
+    }
+
+    /// 볼륨 키 라우팅의 판단 근거 한 줄
+    private static func volumeRouteDiagnosis() -> String {
+        let mediaKeys = MediaKeyManager.shared
+        if mediaKeys.isEnabled && !mediaKeys.isRunning {
+            return "⚠️ 미디어 키 비활성 — 시스템 설정 > 손쉬운 사용에서 Spot 허용 필요"
+        }
+        let audio = AudioOutputMonitor.shared
+        let device = audio.deviceName ?? "없음"
+        return "출력 장치: \(device)" + (audio.systemCanControlVolume ? " (시스템 제어 가능)" : "")
     }
 
     /// "50" → 절대, "+10"/"-10" → 상대

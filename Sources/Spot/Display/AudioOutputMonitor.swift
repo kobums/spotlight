@@ -13,13 +13,17 @@ final class AudioOutputMonitor {
 
     /// 현재 기본 출력 장치 이름 (예: "LG HDR 4K", "MacBook Pro 스피커")
     private(set) var deviceName: String?
+    /// macOS가 기본 출력 장치의 볼륨을 직접 조절할 수 있는가.
+    /// 내장 스피커·에어팟은 true, DisplayPort/HDMI 오디오는 false —
+    /// false면 볼륨 키를 시스템에 넘겨도 아무 일도 일어나지 않는다는 뜻이다.
+    private(set) var systemCanControlVolume = false
 
     private var started = false
 
     func start() {
         guard !started else { return }
         started = true
-        deviceName = Self.defaultOutputDeviceName()
+        refresh()
 
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDefaultOutputDevice,
@@ -28,8 +32,14 @@ final class AudioOutputMonitor {
         AudioObjectAddPropertyListenerBlock(
             AudioObjectID(kAudioObjectSystemObject), &address, DispatchQueue.main
         ) { [weak self] _, _ in
-            self?.deviceName = Self.defaultOutputDeviceName()
+            self?.refresh()
         }
+    }
+
+    private func refresh() {
+        let deviceID = Self.defaultOutputDeviceID()
+        deviceName = deviceID.flatMap(Self.name(of:))
+        systemCanControlVolume = deviceID.map(Self.canSetVolume(of:)) ?? false
     }
 
     /// 모니터 이름 ↔ 오디오 장치 이름 대조용 정규화 — MonitorControl과 동일하게
@@ -39,7 +49,7 @@ final class AudioOutputMonitor {
         name.lowercased().filter { !$0.isWhitespace && !$0.isNumber }
     }
 
-    private static func defaultOutputDeviceName() -> String? {
+    private static func defaultOutputDeviceID() -> AudioObjectID? {
         var deviceID = AudioObjectID(kAudioObjectUnknown)
         var size = UInt32(MemoryLayout<AudioObjectID>.size)
         var address = AudioObjectPropertyAddress(
@@ -49,7 +59,10 @@ final class AudioOutputMonitor {
         guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject),
                                          &address, 0, nil, &size, &deviceID) == noErr,
               deviceID != kAudioObjectUnknown else { return nil }
+        return deviceID
+    }
 
+    private static func name(of deviceID: AudioObjectID) -> String? {
         var name: CFString?
         var nameSize = UInt32(MemoryLayout<CFString?>.size)
         var nameAddress = AudioObjectPropertyAddress(
@@ -61,5 +74,24 @@ final class AudioOutputMonitor {
         }
         guard status == noErr else { return nil }
         return name as String?
+    }
+
+    /// 장치의 출력 볼륨이 설정 가능한지 — 가상 메인 볼륨 또는 채널별 볼륨이
+    /// settable이면 macOS 볼륨 키가 이 장치에서 동작한다 (MonitorControl의
+    /// canSetVirtualMainVolume 판정과 같은 목적).
+    private static func canSetVolume(of deviceID: AudioObjectID) -> Bool {
+        for element in [kAudioObjectPropertyElementMain, 1, 2] {
+            var address = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyVolumeScalar,
+                mScope: kAudioDevicePropertyScopeOutput,
+                mElement: element)
+            var settable = DarwinBoolean(false)
+            if AudioObjectHasProperty(deviceID, &address),
+               AudioObjectIsPropertySettable(deviceID, &address, &settable) == noErr,
+               settable.boolValue {
+                return true
+            }
+        }
+        return false
     }
 }

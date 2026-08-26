@@ -246,13 +246,31 @@ final class DisplayControlManager {
         return feedback
     }
 
-    /// 기본 오디오 출력 장치와 이름이 일치하는 DDC 모니터 (공백·숫자 무시 비교)
+    /// 볼륨·음소거 키의 대상 모니터.
+    ///
+    /// 1순위: 기본 오디오 출력 장치와 이름이 일치하는 DDC 모니터 (공백·숫자 무시 비교).
+    /// 2순위: 이름 매칭이 안 됐지만 시스템도 그 장치의 볼륨을 못 다루면(DP/HDMI 오디오)
+    ///        볼륨 지원 DDC 모니터 전체 — 모니터가 오디오 쪽 이름을 화면과 다르게
+    ///        신고하는 기종에서 키가 통째로 죽는 것을 막는다.
+    /// 빈 배열: 시스템이 제어 가능한 장치(내장 스피커·에어팟 등) — 이벤트를 양보한다.
     private func audioTargets() -> [Int] {
-        guard let deviceName = AudioOutputMonitor.shared.deviceName else { return [] }
-        let device = AudioOutputMonitor.normalized(deviceName)
-        return monitors.indices.filter {
-            monitors[$0].isDDC && AudioOutputMonitor.normalized(monitors[$0].name) == device
+        let audio = AudioOutputMonitor.shared
+        if let deviceName = audio.deviceName {
+            let device = AudioOutputMonitor.normalized(deviceName)
+            let matched = monitors.indices.filter {
+                monitors[$0].isDDC && AudioOutputMonitor.normalized(monitors[$0].name) == device
+            }
+            if !matched.isEmpty { return matched }
         }
+        if !audio.systemCanControlVolume {
+            return monitors.indices.filter { monitors[$0].volume != nil }
+        }
+        return []
+    }
+
+    /// 볼륨 키가 지금 어디로 가는지 — 런처 진단 표시용
+    func volumeKeyTargetNames() -> [String] {
+        audioTargets().map { monitors[$0].name }
     }
 
     /// 해당 디스플레이의 모니터 인덱스. 못 찾으면 전체를 대상으로 한다.
