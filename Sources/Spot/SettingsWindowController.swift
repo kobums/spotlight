@@ -243,7 +243,19 @@ private struct GeneralTab: View {
                     .foregroundColor(.secondary)
                     .padding(.top, 12)
             }
+
+            Section {
+                Text("Spot \(Self.version)")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .padding(.top, 8)
+            }
         }
         .padding(20)
     }
+
+    /// 앱 번들의 버전 (make-app.sh가 VERSION 파일 값을 Info.plist에 넣는다).
+    /// swift run 개발 실행은 번들 정보가 없으므로 "dev"로 표시된다.
+    private static let version =
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
 }
