@@ -33,9 +33,11 @@ final class MediaKeyManager {
     private static let fineStep = 2
 
     private let enabledKey = "mediaKeysEnabled"
+    private let promptedKey = "mediaKeysPermissionPrompted"
     private let hud = DisplayHUD()
     private var tap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
+    private var permissionPoll: Timer?
 
     var isEnabled: Bool {
         UserDefaults.standard.object(forKey: enabledKey) as? Bool ?? true
@@ -48,9 +50,18 @@ final class MediaKeyManager {
 
     func start() {
         guard isEnabled, tap == nil else { return }
-        // 이벤트 탭은 손쉬운 사용 권한이 필요하다. 없으면 조용히 포기하고,
-        // 메뉴에서 다시 켤 때 프롬프트를 띄운다.
-        guard AXIsProcessTrusted() else { return }
+        // 이벤트 탭은 손쉬운 사용 권한이 필요하다. 기본 활성 기능이므로 최초 1회는
+        // 시스템 프롬프트를 띄우고, 사용자가 설정에서 권한을 주면 재시작 없이
+        // 붙도록 잠시 감시한다. (초기 구현은 조용히 포기해 새로 설치한 머신에서
+        // 미디어 키가 이유 표시 없이 전부 무반응이었다.)
+        guard AXIsProcessTrusted() else {
+            if !UserDefaults.standard.bool(forKey: promptedKey) {
+                UserDefaults.standard.set(true, forKey: promptedKey)
+                AccessibilityPermission.ensureTrusted()
+            }
+            watchPermission()
+            return
+        }
 
         let mask = CGEventMask(1 << Self.systemDefinedRawType)
         guard let tap = CGEvent.tapCreate(
@@ -74,10 +85,31 @@ final class MediaKeyManager {
     }
 
     func stop() {
+        permissionPoll?.invalidate()
+        permissionPoll = nil
         if let tap { CGEvent.tapEnable(tap: tap, enable: false) }
         if let runLoopSource { CFRunLoopRemoveSource(CFRunLoopGetMain(), runLoopSource, .commonModes) }
         runLoopSource = nil
         tap = nil
+    }
+
+    /// 권한 부여를 감시하다 트러스트되면 즉시 탭을 붙인다 (5분 후 포기 —
+    /// 이후에도 메뉴를 열면 start()가 다시 시도한다)
+    private func watchPermission() {
+        guard permissionPoll == nil else { return }
+        var remaining = 100
+        permissionPoll = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] timer in
+            guard let self else { timer.invalidate(); return }
+            remaining -= 1
+            if AXIsProcessTrusted() {
+                timer.invalidate()
+                self.permissionPoll = nil
+                self.start()
+            } else if remaining <= 0 {
+                timer.invalidate()
+                self.permissionPoll = nil
+            }
+        }
     }
 
     func setEnabled(_ enabled: Bool) {
