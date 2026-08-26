@@ -1,15 +1,16 @@
 import Foundation
 
-/// 모니터 밝기·볼륨 제어 명령 (MonitorControl 대체):
-/// "밝기", "밝기 50", "밝기 +10", "밝기 lg 30", "볼륨 30", "음소거".
+/// 모니터 밝기·볼륨·대비 제어 명령 (MonitorControl 대체):
+/// "밝기", "밝기 50", "밝기 +10", "밝기 lg 30", "볼륨 30", "대비 70", "음소거".
 final class DisplayProvider: SearchProvider {
     private enum Command {
-        case brightness, volume, mute
+        case brightness, volume, contrast, mute
     }
 
     private static let keywords: [(words: [String], command: Command)] = [
         (["밝기", "brightness"], .brightness),
         (["볼륨", "volume", "모니터볼륨"], .volume),
+        (["대비", "contrast", "명암"], .contrast),
         (["음소거", "mute"], .mute),
     ]
 
@@ -59,6 +60,7 @@ final class DisplayProvider: SearchProvider {
         switch command {
         case .brightness: return brightnessResults(value: value, relative: relative, target: target, indices: indices, score: baseScore)
         case .volume: return volumeResults(value: value, relative: relative, target: target, indices: indices, score: baseScore)
+        case .contrast: return contrastResults(value: value, relative: relative, target: target, indices: indices, score: baseScore)
         case .mute: return muteResults(target: target, indices: indices, score: baseScore)
         }
     }
@@ -119,6 +121,37 @@ final class DisplayProvider: SearchProvider {
             subtitle: names,
             symbolName: "speaker.wave.2.fill", score: score + 2,
             action: { _ in DisplayControlManager.shared.setVolume(value, target: target, relative: relative) })]
+    }
+
+    private func contrastResults(value: Int?, relative: Bool, target: String?,
+                                 indices: [Int], score: Double) -> [SearchResult] {
+        let manager = DisplayControlManager.shared
+        let capable = indices.filter { manager.monitors[$0].contrast != nil }
+        guard !capable.isEmpty else {
+            return [SearchResult(
+                id: "display:contrast:none", kind: .systemAction,
+                title: "대비 제어 가능한 모니터 없음",
+                subtitle: "DDC 하드웨어 제어가 되는 모니터만 지원됩니다",
+                symbolName: "circle.lefthalf.filled", score: score, action: { _ in })]
+        }
+        guard let value else {
+            return capable.map { index in
+                let monitor = manager.monitors[index]
+                return SearchResult(
+                    id: "display:contrast:info:\(monitor.name)", kind: .systemAction,
+                    title: "\(monitor.name) — 대비 \(monitor.contrast ?? 0)%",
+                    subtitle: "\"대비 70\" 또는 \"대비 +5\"로 조절",
+                    symbolName: "circle.lefthalf.filled", score: score, action: { _ in })
+            }
+        }
+        let valueText = relative ? (value >= 0 ? "+\(value)" : "\(value)") : "\(value)%"
+        let names = capable.map { manager.monitors[$0].name }.joined(separator: ", ")
+        return [SearchResult(
+            id: "display:contrast:set", kind: .systemAction,
+            title: "대비 \(valueText)\(relative ? "" : "로 설정")",
+            subtitle: names,
+            symbolName: "circle.lefthalf.filled", score: score + 2,
+            action: { _ in DisplayControlManager.shared.setContrast(value, target: target, relative: relative) })]
     }
 
     private func muteResults(target: String?, indices: [Int], score: Double) -> [SearchResult] {
