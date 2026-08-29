@@ -168,8 +168,11 @@ Sources/Spot/Display/
 │                             밝기/볼륨/대비 get/set(0~100), 결합 디밍, 상태 캐시
 ├── AudioOutputMonitor.swift  CoreAudio 기본 출력 장치 감시 — 볼륨 키 대상 매칭 근거
 ├── MediaKeyManager.swift     밝기·볼륨 미디어 키 이벤트 탭 → 위 계층으로 라우팅
-├── DisplayHUD.swift          조절 표시기 — 미디어 키·런처 명령 공용, DisplayControlManager가 띄운다
+├── DisplayHUD.swift          조절 표시기 — 미디어 키·런처 명령·슬라이더 공용, DisplayControlManager가 띄운다
 │                             (DDC 밝기 쓰기는 모니터 자체 OSD도 안 뜨므로 유일한 피드백)
+├── DisplayMenuSection.swift  메뉴바 메뉴 상단의 모니터별 카드 (이름+밝기·볼륨 슬라이더,
+│                             NSMenuItem.view 방식 — MonitorControl의 메뉴 구성과 동일.
+│                             메뉴가 열릴 때마다 최신 목록·값으로 재구성, 드래그는 디바운스 적용)
 └── (Providers/)DisplayProvider.swift  런처 명령 파싱 (AwakeProvider 패턴)
 ```
 
@@ -230,6 +233,11 @@ Sources/Spot/Display/
   — "1회 실패 = 즉시 판정"을 MonitorControl식 5회 재시도로 교체. HDMI 연결 모니터가
   MonitorControl로는 되는데 Spot은 감마로 강등되던 다른 머신 사례의 대응.
   LG(DP)는 첫 시도 성공 유지 실측 확인
+- [x] 6단계: 조작 표면 확장 (2026-08-26)
+  — 런처 명령에도 HUD 표시(0.3.6), 메뉴바에 모니터별 밝기·볼륨 슬라이더(0.3.7,
+  MonitorControl 스타일 NSMenuItem.view 카드). 이로써 미디어 키·런처 명령·슬라이더
+  세 진입점이 모두 DisplayControlManager 하나로 수렴
 - [ ] 후보: 밝기 전역 단축키(설정 창 연동), 모니터 간 밝기 동기화,
   DELL DP 직결 시 DDC 재프로브, 모니터별 오디오 장치 이름 수동 지정
-  (MonitorControl의 audioDeviceNameOverride — 화면 이름과 오디오 이름이 다른 기종용)
+  (MonitorControl의 audioDeviceNameOverride — 화면 이름과 오디오 이름이 다른 기종용),
+  메뉴 슬라이더에 대비 추가

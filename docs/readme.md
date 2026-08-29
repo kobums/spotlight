@@ -1,17 +1,20 @@
 # Spot 문서
 
-Spot은 개인용 macOS 런처(⌥Space) + 키보드 화면 접근 도구(⌃Space)다.
+Spot은 개인용 macOS 런처(⌥Space) + 키보드 화면 접근 도구(⌃Space)에,
+키 리맵(Karabiner 대체)·모니터 밝기/볼륨(MonitorControl 대체)·앱별 한/영 전환
+(Input Source Pro 대체) 상시 유틸리티를 더한 앱이다.
 빠른 시작은 [루트 README](../README.md), 그 이상은 아래 문서를 본다.
 
 ## 문서 목록
 
 | 문서 | 대상 | 내용 |
 |---|---|---|
-| [features.md](features.md) | 사용자 | 전체 기능 상세 — 런처의 12개 검색 모드, 키보드 화면 접근 4개 모드의 키맵과 동작 |
-| [architecture.md](architecture.md) | 개발자 | 코드 구조와 구현 방식 — 검색 파이프라인, 접근성 API 활용, 좌표계, 한글 IME 대응, 권한·서명, 트러블슈팅 |
+| [features.md](features.md) | 사용자 | 전체 기능 상세 — 런처의 14개 검색 모드, 키보드 화면 접근 4개 모드, 키 리맵, 설정 창 |
+| [architecture.md](architecture.md) | 개발자 | 코드 구조와 구현 방식 — 검색 파이프라인, 접근성 API 활용, 좌표계, 한글 IME 대응, 상시 유틸리티(리맵·미디어 키·모니터·한영), 권한·서명, 트러블슈팅 |
+| [RELEASE.md](RELEASE.md) | 개발자 | 릴리스·배포 절차 — Developer ID 서명·공증, GitHub Actions, Homebrew tap |
 | [research.md](research.md) | 설계 배경 | 개발 전 조사 — 기존 런처(Raycast/Alfred/LaunchBar…)와 키보드 접근 앱(Homerow/Shortcat/warpd…) 분석 |
 | [window-management.md](window-management.md) | 설계 배경 | 창 관리(Rectangle 대체) 조사·설계 — 채택 범위, 창 모드 키맵, AX 창 이동 함정 |
-| [display-control.md](display-control.md) | 설계 배경 | 모니터 제어(MonitorControl 대체) 조사·설계 — DDC/CI, 비공개 API, 감마 폴백 |
+| [display-control.md](display-control.md) | 설계 배경 | 모니터 제어(MonitorControl 대체) 조사·설계 — DDC/CI, 비공개 API, 감마 폴백, 미디어 키, 오디오 라우팅, **디버깅 이력과 막다른 길 기록** |
 | [input-source.md](input-source.md) | 설계 배경 | 입력 소스 자동 전환(Input Source Pro 대체) 조사·설계 — TIS, 앱별 규칙, 인디케이터 |
 
 ## 구현 연혁 요약
@@ -38,3 +41,14 @@ Spot은 개인용 macOS 런처(⌥Space) + 키보드 화면 접근 도구(⌃Spa
 | 2026-07-20 | 입력 소스 자동 전환 — Input Source Pro 대체 (앱별 규칙, 한/A 인디케이터, TIS) |
 | 2026-07-20 | 설정 창 "입력 소스" 탭 — 규칙 관리 UI, 인디케이터 옵션, 구식 포맷 마이그레이션 |
 | 2026-07-20 | 리팩토링 — 오버레이 공통 기반(ModeOverlayController), AX 헬퍼, 명령 키워드 점수 통합, Window/ 분리 |
+| 2026-07-20 | Homebrew 배포 — Developer ID 서명·공증, GitHub Actions 자동 릴리스, kobums/tap cask (v0.1.0) |
+| 2026-08-06 | 계산기 확장 — 환율(open.er-api.com 24h 캐시)·단독 수량 자동 변환·단위 추가 (v0.1.5) |
+| 2026-08-06 | 클립보드 이미지 항목·고정(pin) — PNG 파일 저장, ⌘Enter 고정 토글 |
+| 2026-08-06 | 검색 확장 — 메뉴 항목(`>`, Paletro 방식)·이모지(`:`)·브라우저 북마크 (v0.2.0) |
+| 2026-08-18 | 키 리맵 확장 — 외장 키보드 F10~F12 → 음소거·볼륨 미디어 키 (v0.2.1) |
+| 2026-08-24 | 모니터 밝기·볼륨 미디어 키 — 이벤트 탭 + F1/F2 리맵 + 자체 HUD, 모니터 식별 EDID 기반 교체 (v0.3.0) |
+| 2026-08-24 | DDC 읽기 1회 전송 버그 수정 — 모든 모니터가 감마로 강등되던 원인, 볼륨·음소거 첫 동작 (v0.3.1) |
+| 2026-08-26 | 볼륨 키 오디오 장치 매칭 라우팅(AudioOutputMonitor)·대비 명령·결합 디밍 (v0.3.2) |
+| 2026-08-26 | 미디어 키 권한 프롬프트·폴백 라우팅·`볼륨` 진단 행 (v0.3.3), 설정 탭 버전 표시 (v0.3.4) |
+| 2026-08-26 | DDC 트랜잭션 5회 재시도 — HDMI 모니터 감마 강등 사례 대응 (v0.3.5) |
+| 2026-08-26 | 런처 명령 HUD (v0.3.6), 메뉴바 모니터별 밝기·볼륨 슬라이더 (v0.3.7) |

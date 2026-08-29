@@ -5,6 +5,7 @@ Spot 을 서명·공증해 GitHub 릴리스로 게시하고 `brew install --cask
 
 ```
 brew tap kobums/tap
+brew trust kobums/tap        # 서드파티 tap 신뢰 (최신 Homebrew 필수)
 brew install --cask spot
 ```
 
@@ -74,14 +75,30 @@ TAP_DIR=~/develop/homebrew-tap ./scripts/release.sh --publish   # = make publish
 ## GitHub Actions 자동 릴리스
 
 `v*` 태그를 push 하면 `.github/workflows/release.yml` 이 빌드·서명·공증·게시·cask 갱신을
-모두 수행한다.
+모두 수행한다. 평소에는 이 한 줄이면 된다:
 
 ```bash
-echo "0.2.0" > VERSION
-git commit -am "release: 0.2.0"
-git tag v0.2.0
+make release-ci V=0.3.8    # VERSION 갱신 → 커밋 → 태그 push → Actions 자동 릴리스
+```
+
+수동으로 하면:
+
+```bash
+echo "0.3.8" > VERSION
+git commit -am "chore: 0.3.8"
+git tag v0.3.8
 git push origin main --tags
 ```
+
+릴리스 완료 후 실사용 Mac에서 교체:
+
+```bash
+brew update && brew upgrade --cask spot
+```
+
+> **실사용 Mac의 /Applications에는 항상 brew 배포본(Developer ID 서명)을 둘 것.**
+> `make install`(Apple Development 서명)로 덮으면 TCC 손쉬운 사용 허용이 무효가 되어
+> AX 기반 기능이 조용히 죽는다 — [architecture.md의 서명과 TCC](architecture.md#서명과-tcc--중요) 참조.
 
 ### 필요한 저장소 Secrets
 
