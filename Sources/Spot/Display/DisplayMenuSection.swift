@@ -45,10 +45,11 @@ private final class MonitorCardView: NSView {
         name.textColor = .secondaryLabelColor
 
         var rows: [NSView] = [name]
+        // DDC는 0 밑 결합 디밍(감마) 구간까지 한 슬라이더로 — 표시 값과 실제 화면
+        // 밝기가 어긋나지 않게. 감마 전용은 완전히 검어지면 조작 불능이라 하한 반영.
         rows.append(sliderRow(symbol: "sun.max.fill",
-                              value: monitor.brightness,
-                              // 감마 디밍은 완전히 검어지면 조작 불능이라 하한을 슬라이더에도 반영
-                              minValue: monitor.isDDC ? 0 : GammaDimmer.minPercent,
+                              value: monitor.combinedBrightness,
+                              minValue: monitor.isDDC ? GammaDimmer.minPercent - 100 : GammaDimmer.minPercent,
                               action: #selector(brightnessChanged)))
         if hasVolume {
             rows.append(sliderRow(symbol: "speaker.wave.2.fill",

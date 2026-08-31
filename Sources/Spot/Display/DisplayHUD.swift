@@ -68,16 +68,16 @@ private struct HUDView: View {
 
     private var symbol: String {
         switch feedback.kind {
-        case .brightness: return "sun.max.fill"
+        case .brightness: return feedback.value < 0 ? "sun.min.fill" : "sun.max.fill"
         case .contrast: return "circle.lefthalf.filled"
         case .volume: return feedback.muted || feedback.value == 0
             ? "speaker.slash.fill" : "speaker.wave.3.fill"
         }
     }
 
-    /// 음소거 상태에서는 눈금을 비워 보여준다
+    /// 음소거 상태에서는 눈금을 비워 보여준다. 결합 디밍(밝기 음수) 구간도 눈금은 0이다.
     private var filled: Int {
-        let value = feedback.muted ? 0 : feedback.value
+        let value = feedback.muted ? 0 : max(0, feedback.value)
         return Int((Double(value) / 100 * Double(Self.segments)).rounded())
     }
 
@@ -92,6 +92,12 @@ private struct HUDView: View {
                         .fill(index < filled ? Color.primary : Color.primary.opacity(0.22))
                         .frame(width: 7, height: 7)
                 }
+            }
+            // 결합 디밍 구간: 눈금은 0인데 화면은 계속 어두워지므로 값으로 피드백한다
+            if feedback.kind == .brightness, feedback.value < 0 {
+                Text("\(feedback.value)%")
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.secondary)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -76,7 +76,7 @@ final class DisplayProvider: SearchProvider {
                 let monitor = manager.monitors[index]
                 return SearchResult(
                     id: "display:brightness:info:\(monitor.name)", kind: .systemAction,
-                    title: "\(monitor.name) — 밝기 \(monitor.brightness)%",
+                    title: "\(monitor.name) — 밝기 \(monitor.combinedBrightness)%",
                     subtitle: "\(monitor.methodLabel) · \"밝기 50\" 또는 \"밝기 +10\"으로 조절",
                     symbolName: "sun.max", score: score, action: { _ in })
             }

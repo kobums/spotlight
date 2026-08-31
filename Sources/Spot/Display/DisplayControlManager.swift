@@ -31,6 +31,11 @@ final class DisplayControlManager {
 
         var isDDC: Bool { if case .ddc = method { return true }; return false }
         var methodLabel: String { isDDC ? "DDC" : "감마" }
+
+        /// 표시용 결합 밝기 — 0~100은 백라이트, 0 미만은 결합 디밍(감마) 구간.
+        /// 백라이트 0에서 멈춘 값만 보여주면 디밍 중에도 "0%"로 고정돼 실제 화면
+        /// 밝기와 어긋난다. 범위: (GammaDimmer.minPercent - 100)~100.
+        var combinedBrightness: Int { brightness + swDim - 100 }
     }
 
     /// 미디어 키 HUD 등에 돌려줄 조작 결과
@@ -220,11 +225,13 @@ final class DisplayControlManager {
 
     // MARK: - 메뉴바 슬라이더용 제어 (HUD 없음 — 슬라이더 자체가 피드백)
 
-    /// 밝기 슬라이더. 절대값이므로 결합 디밍은 걷어낸다.
+    /// 밝기 슬라이더. 절대값 — 0 이상은 백라이트(디밍 해제), 0 미만은 결합 디밍 구간.
     func setBrightness(at index: Int, to value: Int) {
         guard monitors.indices.contains(index) else { return }
-        setSwDim(at: index, to: 100)
-        applyBrightness(at: index, to: value)
+        if monitors[index].isDDC {
+            setSwDim(at: index, to: min(100, 100 + value))
+        }
+        applyBrightness(at: index, to: max(0, value))
     }
 
     /// 볼륨 슬라이더 (음소거 상태면 해제된다)
@@ -328,7 +335,8 @@ final class DisplayControlManager {
 
     // MARK: - 적용 (메인에서 캐시 갱신 → 큐에서 하드웨어 쓰기)
 
-    /// 새 밝기를 캐시에 반영하고 하드웨어 쓰기를 예약. 실제 적용된 값을 돌려준다.
+    /// 새 밝기를 캐시에 반영하고 하드웨어 쓰기를 예약.
+    /// 실제 적용된 **결합 밝기**(combinedBrightness, 디밍 구간이면 음수)를 돌려준다.
     ///
     /// DDC 모니터는 결합 디밍(MonitorControl 방식)을 지원한다: 요청 값이 0 밑이면
     /// 백라이트 최저에서 멈추지 않고 감마로 이어서 어두워지고, 올릴 때는 감마부터
@@ -353,7 +361,7 @@ final class DisplayControlManager {
                 monitors[index].brightness = clamped
                 queue.async { DDCService.write(service, vcp: DDCService.VCP.brightness, value: clamped) }
             }
-            return clamped
+            return monitors[index].combinedBrightness
         case .gamma(let displayID):
             // 감마는 화면이 완전히 검어지면 조작 불능이 되므로 하한을 둔다
             let clamped = max(GammaDimmer.minPercent, min(100, value))
