@@ -12,6 +12,8 @@ enum ResultKind {
     case menuItem
     case emoji
     case bookmark
+    case snippet
+    case browserTab
 }
 
 struct SearchResult: Identifiable {
