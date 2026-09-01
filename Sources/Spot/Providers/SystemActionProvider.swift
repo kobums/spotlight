@@ -7,12 +7,25 @@ final class SystemActionProvider: SearchProvider {
     private struct Action {
         let id: String
         let title: String
+        var subtitle: String = "시스템 액션"
         let keywords: [String]
         let symbol: String
         let run: () -> Void
     }
 
     private lazy var actions: [Action] = [
+        Action(
+            id: "action:plain-paste",
+            title: "서식 제거 붙여넣기",
+            subtitle: "현재 클립보드를 일반 텍스트로 붙여넣기",
+            keywords: ["plain paste", "plain", "서식제거", "서식없이", "붙여넣기", "일반텍스트"],
+            symbol: "doc.plaintext",
+            run: {
+                guard let text = NSPasteboard.general.string(forType: .string) else { return }
+                ClipboardStore.shared.copy(text)  // 문자열만 다시 써서 서식 제거
+                Paster.pasteToFrontmostApp()
+            }
+        ),
         Action(
             id: "action:sleep",
             title: "잠자기",
@@ -94,7 +107,7 @@ final class SystemActionProvider: SearchProvider {
                 id: action.id,
                 kind: .systemAction,
                 title: action.title,
-                subtitle: "시스템 액션",
+                subtitle: action.subtitle,
                 symbolName: action.symbol,
                 score: (best.isInfinite ? Score.actionExact : best) + Score.actionBonus,
                 action: { _ in action.run() }
