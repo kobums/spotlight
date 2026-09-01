@@ -8,12 +8,13 @@ final class SearchEngine {
     private let elementProvider = UIElementProvider()
     private let menuProvider = MenuItemProvider()
     private let emojiProvider = EmojiProvider()
+    private let tabProvider = TabProvider()
 
     /// 동기 프로바이더 — 나열 순서가 정렬 전 기본 순서
     private lazy var syncProviders: [SearchProvider] = [
         CalculatorProvider(), webSearchProvider, AppProvider(), SystemSettingsProvider(),
         SystemActionProvider(), AwakeProvider(), DisplayProvider(), InputSourceProvider(),
-        BookmarkProvider(),
+        BookmarkProvider(), WindowCommandProvider(), SnippetProvider(),
     ]
 
     /// 파일 검색(비동기) 결과 콜백
@@ -32,6 +33,12 @@ final class SearchEngine {
     var onMenuResults: (([SearchResult]) -> Void)? {
         get { menuProvider.onResults }
         set { menuProvider.onResults = newValue }
+    }
+
+    /// 브라우저 탭 검색(비동기) 결과 콜백 — 전용 모드라 기존 결과를 통째로 교체
+    var onTabResults: (([SearchResult]) -> Void)? {
+        get { tabProvider.onResults }
+        set { tabProvider.onResults = newValue }
     }
 
     /// 동기 프로바이더 결과 (즉시 표시)
@@ -69,6 +76,13 @@ final class SearchEngine {
             return []
         }
 
+        // 브라우저 탭 모드("탭"/"tab")도 전용 — 결과는 onTabResults 콜백으로
+        if TabProvider.isTabQuery(trimmed) {
+            fileProvider.search("")
+            tabProvider.search(trimmed)
+            return []
+        }
+
         var results = syncProviders.flatMap { $0.results(for: trimmed) }
         applyFrecencyBoost(to: &results)
         results.sort { $0.score > $1.score }
@@ -93,8 +107,8 @@ final class SearchEngine {
     }
 
     func recordSelection(_ result: SearchResult) {
-        // 계산 결과와 UI 요소(좌표 기반 id라 재현 안 됨)는 학습 대상에서 제외
-        guard result.kind != .calculator, result.kind != .uiElement else { return }
+        // 계산 결과와 UI 요소·브라우저 탭(위치 기반 id라 재현 안 됨)은 학습 대상에서 제외
+        guard result.kind != .calculator, result.kind != .uiElement, result.kind != .browserTab else { return }
         FrecencyStore.shared.recordSelection(id: result.id)
     }
 

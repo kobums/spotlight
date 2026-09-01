@@ -45,9 +45,24 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <true/>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>브라우저 탭 검색이 열린 탭 목록을 읽고 전환하는 데 사용됩니다.</string>
 </dict>
 </plist>
 PLIST
+
+# 하드닝된 런타임에서 AppleEvents(브라우저 탭 검색)를 쓰기 위한 entitlements
+ENTITLEMENTS=build/Spot.entitlements
+cat > "$ENTITLEMENTS" <<ENT
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.automation.apple-events</key>
+    <true/>
+</dict>
+</plist>
+ENT
 
 # 서명 identity 결정: SIGN_IDENTITY 우선, 없으면 Apple Development 자동 탐지, 그래도 없으면 ad-hoc.
 # Apple Development/ad-hoc 서명은 손쉬운 사용(TCC) 권한이 재설치 후에도 유지되게 하지만,
@@ -59,7 +74,7 @@ fi
 
 SIGN_ARGS=(--force)
 if [ -n "${HARDENED:-}" ]; then
-    SIGN_ARGS+=(--options runtime --timestamp)
+    SIGN_ARGS+=(--options runtime --timestamp --entitlements "$ENTITLEMENTS")
 fi
 
 if [ -n "$IDENTITY" ]; then
