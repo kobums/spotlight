@@ -3,8 +3,8 @@
 개인용 macOS 생산성 앱. 두 개의 축으로 이루어져 있다:
 
 1. **런처 (⌥Space)** — Spotlight/Raycast/Alfred/LaunchBar의 장점만 모은 검색창.
-   앱·파일·북마크·계산(환율)·클립보드·이모지·메뉴 항목·시스템 액션·시스템 설정·
-   모니터 제어·한/영 규칙·웹 검색·UI 요소 클릭·잠자기 방지.
+   앱·파일·북마크·브라우저 탭·계산(환율)·클립보드·스니펫·이모지·메뉴 항목·시스템 액션·
+   시스템 설정·모니터 제어·창 배치·한/영 규칙·웹 검색·UI 요소 클릭·잠자기 방지.
 2. **키보드 화면 접근 (⌃Space)** — Homerow/Vimium/warpd 방식.
    마우스 없이 화면의 아무 요소나 클릭·스크롤하는 힌트/스크롤/그리드 모드.
 
@@ -57,6 +57,10 @@ swift run
 | `밝기 50`, `볼륨 +5`, `대비 70`, `음소거` | 외장 **모니터 밝기·볼륨·대비** 제어 (MonitorControl 방식, DDC·감마) |
 | `입력규칙`, `한영` | 앱별 **한/영 자동 전환** + 전환 배지 (Input Source Pro 방식) |
 | `;저장`, `;뒤로` | 최전면 앱 **UI 요소 검색·클릭** (Shortcat 방식) |
+| `창 왼쪽`, `창 최대화` | **창 배치** 명령 — 창 모드와 같은 16개 액션을 런처에서 바로 |
+| `스니펫`, `스니펫 추가 인사 안녕하세요` | **스니펫** — 키워드 입력 → ⏎ 붙여넣기, ⌘⏎ 삭제 |
+| `탭`, `탭 검색어` | 실행 중인 브라우저의 **열린 탭** 검색·전환 (Chrome·Whale·Edge·Brave·Safari) |
+| `서식제거`, `plain` | 현재 클립보드를 **일반 텍스트로** 붙여넣기 |
 | `g`/`yt`/`gh`/`nv` + 검색어 | 웹 검색 (구글/유튜브/깃허브/네이버) |
 
 ### 키보드 화면 접근 — ⌃Space
@@ -104,6 +108,7 @@ DDC가 되면 하드웨어(백라이트·스피커), 안 되면 감마 디밍(�
 - 힌트/스크롤/그리드 모드, UI 요소 검색, 클립보드 자동 붙여넣기, 모니터 밝기·볼륨 키는
   **손쉬운 사용(Accessibility)** 권한 필요
   — 첫 사용 시 시스템 프롬프트로 안내된다. 문제가 생기면 [docs/architecture.md의 권한·서명 절](docs/architecture.md#권한과-서명) 참조
+- 브라우저 탭 검색(`탭`)은 브라우저별 **자동화(Automation)** 권한 필요 — 첫 사용 시 프롬프트
 
 ## 문서
 
@@ -125,6 +130,7 @@ Sources/Spot/
 ├── SearchViewModel / SearchEngine        # 쿼리 라우팅·랭킹·비동기 병합
 ├── Models / Ranking / FuzzyMatch         # 결과 모델·점수 상수·fzy 매칭+한글 초성
 ├── FrecencyStore / ClipboardStore / JSONFileStore   # 학습·히스토리(텍스트·이미지·pin)·영속화
+├── SnippetStore.swift                    # 스니펫 저장소 (snippets.json)
 ├── CurrencyRates.swift                   # 환율 시세 캐시 (open.er-api.com, 24시간)
 ├── BundleLocalization.swift              # 앱 번들 현지화 이름 읽기 (loctable/lproj)
 ├── AwakeSessionManager.swift             # 잠자기 방지 (IOPMAssertion)
@@ -167,6 +173,9 @@ Sources/Spot/
     ├── UIElementProvider.swift           #   ";" UI 요소 검색
     ├── DisplayProvider.swift             #   모니터 밝기·볼륨·대비 명령
     ├── InputSourceProvider.swift         #   입력규칙·한영 전환 명령
+    ├── WindowCommandProvider.swift       #   "창 왼쪽" 등 창 배치 명령
+    ├── SnippetProvider.swift             #   스니펫 검색·추가·삭제
+    ├── TabProvider.swift                 #   "탭" 브라우저 탭 검색 (JXA)
     └── AwakeProvider.swift               #   깨어있기 세션
 
 assets/AppIcon.icns                       # 앱 아이콘 (scripts/make-icon.swift로 생성)
