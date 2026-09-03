@@ -208,10 +208,15 @@ enum DDCService {
                   let product = attributes["ProductAttributes"] as? [String: Any],
                   let token = displayToken(of: entry) else { continue }
 
+            // 세 값 모두 UInt32(_:) 대신 truncatingIfNeeded 를 써야 한다.
+            // 내장 디스플레이의 ProductID는 UInt32 범위를 넘는 값(예: 56303534814273)이라
+            // UInt32(_:) 변환이 트랩을 일으켜 앱이 통째로 죽는다. 클램셸이 아닌
+            // 맥북 단독 사용 시 내장 디스플레이가 항상 열거되므로 매 실행마다 크래시했다
+            // (2026-09-03). 내장 디스플레이는 DDC 대상이 아니라 잘린 값이어도 무해하다.
             result[token] = Identity(
                 productName: product["ProductName"] as? String,
-                vendor: UInt32(product["LegacyManufacturerID"] as? Int ?? 0),
-                model: UInt32(product["ProductID"] as? Int ?? 0),
+                vendor: UInt32(truncatingIfNeeded: product["LegacyManufacturerID"] as? Int ?? 0),
+                model: UInt32(truncatingIfNeeded: product["ProductID"] as? Int ?? 0),
                 serial: UInt32(truncatingIfNeeded: product["SerialNumber"] as? Int ?? 0))
         }
         return result
