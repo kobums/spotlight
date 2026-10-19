@@ -9,6 +9,7 @@ final class SearchEngine {
     private let menuProvider = MenuItemProvider()
     private let emojiProvider = EmojiProvider()
     private let tabProvider = TabProvider()
+    private let windowSwitcherProvider = WindowSwitcherProvider()
 
     /// 동기 프로바이더 — 나열 순서가 정렬 전 기본 순서
     private lazy var syncProviders: [SearchProvider] = [
@@ -40,6 +41,12 @@ final class SearchEngine {
     var onTabResults: (([SearchResult]) -> Void)? {
         get { tabProvider.onResults }
         set { tabProvider.onResults = newValue }
+    }
+
+    /// 창 전환기(비동기) 결과 콜백 — 전용 모드라 기존 결과를 통째로 교체
+    var onWindowResults: (([SearchResult]) -> Void)? {
+        get { windowSwitcherProvider.onResults }
+        set { windowSwitcherProvider.onResults = newValue }
     }
 
     /// 동기 프로바이더 결과 (즉시 표시)
@@ -84,6 +91,13 @@ final class SearchEngine {
             return []
         }
 
+        // 창 전환기("창전환"/"win")도 전용 — 결과는 onWindowResults 콜백으로
+        if WindowSwitcherProvider.isSwitcherQuery(trimmed) {
+            fileProvider.search("")
+            windowSwitcherProvider.search(trimmed)
+            return []
+        }
+
         var results = syncProviders.flatMap { $0.results(for: trimmed) }
         applyFrecencyBoost(to: &results)
         results.sort { $0.score > $1.score }
@@ -108,9 +122,9 @@ final class SearchEngine {
     }
 
     func recordSelection(_ result: SearchResult) {
-        // 계산 결과와 UI 요소·브라우저 탭(위치 기반 id라 재현 안 됨)은 학습 대상에서 제외.
+        // 계산 결과와 UI 요소·브라우저 탭·창(위치 기반 id라 재현 안 됨)은 학습 대상에서 제외.
         // 종료 대상 앱도 제외 — 자주 끈 앱이 `종료`에서 시스템 종료를 밀어내지 않게
-        let unlearned: Set<ResultKind> = [.calculator, .uiElement, .browserTab, .runningApp]
+        let unlearned: Set<ResultKind> = [.calculator, .uiElement, .browserTab, .window, .runningApp]
         guard !unlearned.contains(result.kind) else { return }
         FrecencyStore.shared.recordSelection(id: result.id)
     }

@@ -116,15 +116,8 @@ enum HintTargetCollector {
         }
 
         // 창 순회
-        var windowsRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef) == .success,
-              let windows = windowsRef as? [AXUIElement] else {
-            return (targets, primaryWindowFrame)
-        }
-        for window in windows {
-            var minimizedRef: CFTypeRef?
-            if AXUIElementCopyAttributeValue(window, kAXMinimizedAttribute as CFString, &minimizedRef) == .success,
-               (minimizedRef as? Bool) == true { continue }
+        for window in AX.windows(of: appElement) {
+            if AX.bool(window, kAXMinimizedAttribute as String) { continue }
 
             let (_, _, windowFrame, _) = fetchAttributes(window)
             guard let windowFrame, windowFrame.width > 1, windowFrame.height > 1 else { continue }

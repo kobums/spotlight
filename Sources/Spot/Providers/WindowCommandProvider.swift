@@ -4,7 +4,8 @@ import AppKit
 /// 창 모드·전역 단축키와 같은 WindowManager 액션을 쓴다 — 패널이 포커스를
 /// 안 뺏으므로 최전면 창이 그대로 대상이 된다.
 final class WindowCommandProvider: SearchProvider {
-    private static let keywords = ["창", "window", "win"]
+    /// `win`은 창 전환기(WindowSwitcherProvider) 전용 모드 키워드라 여기서 뺐다
+    private static let keywords = ["창", "window"]
 
     /// displayName 외에 통용되는 별칭 (한글·영문)
     private static let aliases: [WindowAction: [String]] = [

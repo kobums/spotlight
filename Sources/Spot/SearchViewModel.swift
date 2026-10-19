@@ -26,6 +26,11 @@ final class SearchViewModel: ObservableObject {
             self.results = tabResults
             self.selectedIndex = 0
         }
+        engine.onWindowResults = { [weak self] windowResults in
+            guard let self, WindowSwitcherProvider.isSwitcherQuery(self.query) else { return }
+            self.results = windowResults
+            self.selectedIndex = 0
+        }
         engine.onFileResults = { [weak self] fileResults in
             guard let self else { return }
             let selectedID = self.results.indices.contains(self.selectedIndex)

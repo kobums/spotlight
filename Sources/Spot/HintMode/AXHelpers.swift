@@ -40,6 +40,18 @@ enum AX {
         return CGRect(origin: origin, size: size)
     }
 
+    /// 앱의 창 목록 (최소화된 창 포함, 현재 Space 기준 — 다른 Space의 창은 AX가 돌려주지 않는다)
+    static func windows(of appElement: AXUIElement) -> [AXUIElement] {
+        guard let array = attribute(appElement, kAXWindowsAttribute as String),
+              CFGetTypeID(array) == CFArrayGetTypeID(),
+              let items = array as? [AnyObject] else { return [] }
+        return items.compactMap(element)
+    }
+
+    static func bool(_ element: AXUIElement, _ key: String) -> Bool {
+        (attribute(element, key) as? Bool) == true
+    }
+
     /// 앱의 포커스 창
     static func focusedWindow(pid: pid_t) -> AXUIElement? {
         let appElement = AXUIElementCreateApplication(pid)

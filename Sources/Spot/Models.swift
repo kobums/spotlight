@@ -15,6 +15,7 @@ enum ResultKind {
     case snippet
     case browserTab
     case runningApp   // 프로세스 종료 명령의 대상 앱
+    case window       // 창 전환기의 열린 창
 }
 
 struct SearchResult: Identifiable {
