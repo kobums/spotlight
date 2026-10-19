@@ -63,6 +63,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         LoginItemManager.ensureRegisteredOnFirstLaunch()
         KeyRemapManager.shared.start()
         InputSourceManager.shared.start()
+        // 모니터 스캔을 지금 시작한다. 전에는 첫 사용 때에야 싱글턴이 만들어져서,
+        // 실행 직후 첫 밝기 키는 스캔(비동기)이 끝나기 전 빈 목록을 보고 시스템에
+        // 넘어가 아무 일도 안 일어났다. 결합 디밍 감마 복원도 그때까지 밀렸다.
+        _ = DisplayControlManager.shared
         MediaKeyManager.shared.start()
 
         AwakeSessionManager.shared.onChange = { [weak self] in

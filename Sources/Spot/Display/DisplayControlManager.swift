@@ -28,6 +28,8 @@ final class DisplayControlManager {
         /// 결합 디밍 — DDC 밝기 0 밑으로 계속 내릴 때의 감마 스케일 (100 = 없음).
         /// MonitorControl의 "hardware+software dimming" 방식. DDC 모니터 전용.
         var swDim: Int = 100
+        /// 진단용 한 줄 — 감마 모니터는 DDC로 못 잡은 이유 (`밝기 진단`에 표시)
+        var diagnosis: String = ""
 
         var isDDC: Bool { if case .ddc = method { return true }; return false }
         var methodLabel: String { isDDC ? "DDC" : "감마" }
@@ -50,6 +52,13 @@ final class DisplayControlManager {
 
     /// 메인 스레드 전용 캐시
     private(set) var monitors: [Monitor] = []
+
+    /// DDC 쓰기 실패 기록 (모니터 이름 → 횟수·마지막 시각). 메인 전용.
+    /// 쓰기 실패는 캐시만 바뀌고 화면은 그대로인 상태라, 기록이 없으면 사용자에게는
+    /// "키가 안 먹는다"로만 보인다. 재스캔해도 지우지 않는다 (같은 모니터면 같은 이름).
+    private(set) var writeFailures: [String: (count: Int, last: Date)] = [:]
+    /// 마지막 스캔 시각 — 진단 화면에서 "언제 기준 정보인가"를 보여준다
+    private(set) var lastScan: Date?
 
     private let queue = DispatchQueue(label: "spot.display", qos: .userInitiated)
     private let gamma = GammaDimmer()
@@ -109,12 +118,16 @@ final class DisplayControlManager {
     private func assemble(_ probes: [DDCProbe]) {
         let external = Self.onlineExternalDisplays()
         var claimed = Set<CGDirectDisplayID>()
+        var unresponsive = Set<CGDirectDisplayID>()   // DDC 서비스는 있는데 읽기에 무응답
         var result: [Monitor] = []
 
         for probe in probes {
-            guard let brightness = probe.brightness else { continue }
             let displayID = probe.display.identity.flatMap { identity in
                 external.first { Self.matches($0, identity) }
+            }
+            guard let brightness = probe.brightness else {
+                if let displayID { unresponsive.insert(displayID) }
+                continue
             }
             if let displayID { claimed.insert(displayID) }
             result.append(Monitor(
@@ -136,7 +149,9 @@ final class DisplayControlManager {
                 brightness: gamma.brightness(of: displayID),
                 volume: nil,
                 contrast: nil,
-                muted: false))
+                muted: false,
+                diagnosis: Self.gammaReason(unresponsive: unresponsive.contains(displayID),
+                                            ddcServices: probes.count)))
         }
 
         // DDC로 승격된 화면에 감마 디밍이 남아 있으면 백라이트와 겹쳐 이중으로
@@ -146,7 +161,42 @@ final class DisplayControlManager {
         if promoted { CGDisplayRestoreColorSyncSettings() }
 
         monitors = result
+        lastScan = Date()
         gamma.reapplyAll()
+
+        let summary = result.map { monitor in
+            monitor.isDDC
+                ? "\(monitor.name): DDC 밝기 \(monitor.brightness)%"
+                : "\(monitor.name): 감마 (\(monitor.diagnosis))"
+        }
+        SpotLog.info("모니터 스캔 — 외장 \(external.count)대, DDC 서비스 \(probes.count)개"
+                     + (summary.isEmpty ? "" : " · " + summary.joined(separator: " · ")), .display)
+    }
+
+    /// 감마로 떨어진 이유 한 줄 (진단 표시·로그용)
+    private static func gammaReason(unresponsive: Bool, ddcServices: Int) -> String {
+        if !DDCService.available { return "DDC API를 찾지 못함 (macOS 비공개 심볼 변경)" }
+        if unresponsive { return "DDC 읽기 무응답 (5회 재시도 실패) — 모니터 OSD에서 DDC/CI 켜짐 확인" }
+        if ddcServices == 0 { return "DDC 경로 없음 — 독·어댑터 경유이거나 HDMI 포트가 DDC를 막음" }
+        return "DDC 서비스가 이 화면과 연결되지 않음 (EDID 불일치 또는 무응답)"
+    }
+
+    /// DDC 쓰기를 큐에 예약하고, 실패하면 메인에서 기록·로그한다.
+    private func writeDDC(_ service: CFTypeRef, vcp: UInt8, value: Int, monitor name: String) {
+        queue.async { [weak self] in
+            guard !DDCService.write(service, vcp: vcp, value: value) else { return }
+            DispatchQueue.main.async { self?.recordWriteFailure(name, vcp: vcp, value: value) }
+        }
+    }
+
+    private func recordWriteFailure(_ name: String, vcp: UInt8, value: Int) {
+        let previous = writeFailures[name]
+        writeFailures[name] = ((previous?.count ?? 0) + 1, Date())
+        // 키를 꾹 누르면 실패가 연달아 쏟아지므로 로그는 5초에 한 번만
+        if previous.map({ Date().timeIntervalSince($0.last) > 5 }) ?? true {
+            SpotLog.error("DDC 쓰기 실패 — \(name) VCP 0x\(String(vcp, radix: 16)) = \(value)"
+                          + " (누적 \(writeFailures[name]?.count ?? 1)회)", .display)
+        }
     }
 
     /// EDID 신원 ↔ CGDirectDisplayID 대조. 세 값 모두 EDID에서 오므로 정확히 일치한다.
@@ -359,7 +409,7 @@ final class DisplayControlManager {
             }
             if clamped != monitors[index].brightness || value >= 0 {
                 monitors[index].brightness = clamped
-                queue.async { DDCService.write(service, vcp: DDCService.VCP.brightness, value: clamped) }
+                writeDDC(service, vcp: DDCService.VCP.brightness, value: clamped, monitor: monitors[index].name)
             }
             return monitors[index].combinedBrightness
         case .gamma(let displayID):
@@ -390,7 +440,7 @@ final class DisplayControlManager {
         let clamped = max(0, min(100, value))
         monitors[index].volume = clamped
         monitors[index].muted = false
-        queue.async { DDCService.write(service, vcp: DDCService.VCP.volume, value: clamped) }
+        writeDDC(service, vcp: DDCService.VCP.volume, value: clamped, monitor: monitors[index].name)
         return clamped
     }
 
@@ -399,17 +449,15 @@ final class DisplayControlManager {
         guard case .ddc(let service) = monitors[index].method else { return monitors[index].contrast ?? 0 }
         let clamped = max(0, min(100, value))
         monitors[index].contrast = clamped
-        queue.async { DDCService.write(service, vcp: DDCService.VCP.contrast, value: clamped) }
+        writeDDC(service, vcp: DDCService.VCP.contrast, value: clamped, monitor: monitors[index].name)
         return clamped
     }
 
     private func applyMute(at index: Int, to muted: Bool) {
         guard case .ddc(let service) = monitors[index].method else { return }
         monitors[index].muted = muted
-        queue.async {
-            DDCService.write(service, vcp: DDCService.VCP.mute,
-                             value: muted ? DDCService.muteOn : DDCService.muteOff)
-        }
+        writeDDC(service, vcp: DDCService.VCP.mute,
+                 value: muted ? DDCService.muteOn : DDCService.muteOff, monitor: monitors[index].name)
     }
 
     // MARK: - 내부

@@ -1,7 +1,8 @@
-import Foundation
+import AppKit
 
 /// 모니터 밝기·볼륨·대비 제어 명령 (MonitorControl 대체):
-/// "밝기", "밝기 50", "밝기 +10", "밝기 lg 30", "볼륨 30", "대비 70", "음소거".
+/// "밝기", "밝기 50", "밝기 +10", "밝기 lg 30", "볼륨 30", "대비 70", "음소거",
+/// "밝기 진단"(제어 방법·실패 기록·미디어 키 상태 + 재스캔·로그 열기).
 final class DisplayProvider: SearchProvider {
     private enum Command {
         case brightness, volume, contrast, mute
@@ -13,6 +14,15 @@ final class DisplayProvider: SearchProvider {
         (["대비", "contrast", "명암"], .contrast),
         (["음소거", "mute"], .mute),
     ]
+
+    /// 명령 뒤에 오면 진단 화면으로 가는 단어 ("밝기 진단", "볼륨 재스캔")
+    private static let diagnoseWords: Set<String> = ["진단", "diag", "diagnose", "재스캔", "rescan"]
+
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "M/d HH:mm:ss"
+        return f
+    }()
 
     func results(for query: String) -> [SearchResult] {
         let parts = query.split(separator: " ").map(String.init)
@@ -27,6 +37,11 @@ final class DisplayProvider: SearchProvider {
             }
         }
         guard let baseScore, let command else { return [] }
+
+        // 모니터가 하나도 안 잡힌 상태가 진단이 가장 필요한 때라, 아래 "모니터 없음"보다 먼저 본다
+        if parts.count == 2, Self.diagnoseWords.contains(parts[1].lowercased()) {
+            return diagnosticResults(score: baseScore)
+        }
 
         // 인자 파싱: 숫자(±상대 포함)는 값, 나머지는 모니터 이름 토큰
         var value: Int?
@@ -175,6 +190,87 @@ final class DisplayProvider: SearchProvider {
             symbolName: anyMuted ? "speaker.slash.fill" : "speaker.slash",
             score: score,
             action: { _ in DisplayControlManager.shared.toggleMute(target: target) })]
+    }
+
+    /// "밝기 진단" — 모니터별 제어 방법과 이유, DDC 쓰기 실패, 미디어 키 수신 상태,
+    /// 그리고 재스캔·로그 열기 동작. 다른 머신에서 "밝기가 안 된다"를 원인별로 가르는 화면.
+    private func diagnosticResults(score: Double) -> [SearchResult] {
+        let manager = DisplayControlManager.shared
+        let time = Self.timeFormatter
+        var results: [SearchResult] = manager.monitors.map { monitor in
+            let detail: String
+            if monitor.isDDC {
+                var parts = ["밝기 \(monitor.combinedBrightness)%",
+                             monitor.volume != nil ? "볼륨 지원" : "볼륨 미지원"]
+                if let failure = manager.writeFailures[monitor.name] {
+                    parts.append("⚠️ 쓰기 실패 \(failure.count)회 (마지막 \(time.string(from: failure.last)))")
+                } else {
+                    parts.append("쓰기 실패 없음")
+                }
+                if monitor.displayID == nil {
+                    parts.append("⚠️ 화면 매칭 실패 — 밝기 키가 모든 모니터에 적용됨")
+                }
+                detail = parts.joined(separator: " · ")
+            } else {
+                detail = monitor.diagnosis
+            }
+            return SearchResult(
+                id: "display:diag:\(monitor.name)", kind: .systemAction,
+                title: "\(monitor.name) — " + (monitor.isDDC ? "DDC 하드웨어 제어" : "감마 디밍 (소프트웨어)"),
+                subtitle: detail,
+                symbolName: monitor.isDDC ? "checkmark.circle" : "exclamationmark.triangle",
+                score: score + 0.3, action: { _ in })
+        }
+        if results.isEmpty {
+            results.append(SearchResult(
+                id: "display:diag:none", kind: .systemAction,
+                title: "외장 모니터를 찾지 못함",
+                subtitle: "macOS가 외장 디스플레이를 보고하지 않음 — 케이블·모니터 입력 소스 확인",
+                symbolName: "display.trianglebadge.exclamationmark", score: score + 0.3, action: { _ in }))
+        }
+
+        let keys = MediaKeyManager.shared
+        let keyTitle: String
+        let keySubtitle: String
+        if !keys.isEnabled {
+            keyTitle = "밝기·볼륨 키 꺼짐"
+            keySubtitle = "메뉴바 메뉴의 \"모니터 밝기·볼륨 키\"로 켤 수 있습니다"
+        } else if !keys.isRunning {
+            keyTitle = "⚠️ 밝기·볼륨 키 비활성"
+            keySubtitle = "시스템 설정 > 개인정보 보호 및 보안 > 손쉬운 사용에서 Spot 허용 필요"
+        } else {
+            keyTitle = "밝기·볼륨 키 동작 중"
+            keySubtitle = keys.lastKey.map { "마지막 수신: \($0.name) (\(time.string(from: $0.at)))" }
+                ?? "아직 받은 키 없음 — 키를 눌러도 이 값이 안 바뀌면 키보드가 밝기 키를 보내지 않는 것 (fn 조합 확인)"
+        }
+        results.append(SearchResult(
+            id: "display:diag:keys", kind: .systemAction,
+            title: keyTitle, subtitle: keySubtitle,
+            symbolName: "keyboard", score: score + 0.2, action: { _ in }))
+
+        let scanned = manager.lastScan.map { "마지막 스캔 \(time.string(from: $0)) · " } ?? ""
+        results.append(SearchResult(
+            id: "display:diag:rescan", kind: .systemAction,
+            title: "모니터 다시 검색",
+            subtitle: scanned + "Enter로 DDC 지원 여부를 다시 판정 (케이블을 뽑지 않아도 됨)",
+            symbolName: "arrow.clockwise", score: score + 0.1,
+            action: { _ in
+                SpotLog.info("사용자 요청 재스캔", .display)
+                DisplayControlManager.shared.rescan()
+            }))
+        results.append(SearchResult(
+            id: "display:diag:log", kind: .systemAction,
+            title: "Spot 로그 열기",
+            subtitle: "~/Library/Logs/Spot/spot.log",
+            symbolName: "doc.text.magnifyingglass", score: score,
+            action: { _ in
+                if FileManager.default.fileExists(atPath: SpotLog.fileURL.path) {
+                    NSWorkspace.shared.open(SpotLog.fileURL)
+                } else {
+                    NSWorkspace.shared.open(SpotLog.fileURL.deletingLastPathComponent())
+                }
+            }))
+        return results
     }
 
     /// 볼륨 키가 향하는 곳 — 매칭/폴백된 모니터 이름들, 없으면 "시스템"

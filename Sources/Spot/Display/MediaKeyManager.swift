@@ -19,6 +19,16 @@ final class MediaKeyManager {
         case brightnessUp = 2
         case brightnessDown = 3
         case mute = 7
+
+        var label: String {
+            switch self {
+            case .soundUp: return "볼륨 올리기"
+            case .soundDown: return "볼륨 내리기"
+            case .brightnessUp: return "밝기 올리기"
+            case .brightnessDown: return "밝기 내리기"
+            case .mute: return "음소거"
+            }
+        }
     }
 
     /// 미디어 키가 실려 오는 이벤트 종류. CGEventType에는 이 값(14)에 해당하는
@@ -45,6 +55,10 @@ final class MediaKeyManager {
     /// 탭이 실제로 살아 있는지 (권한 없으면 false)
     var isRunning: Bool { tap != nil }
 
+    /// 마지막으로 받은 밝기·볼륨 키와 시각 — `밝기 진단`에서 "키가 아예 안 오는가"와
+    /// "왔는데 모니터가 안 바뀌는가"를 가르는 근거
+    private(set) var lastKey: (name: String, at: Date)?
+
     // MARK: - 수명 주기
 
     func start() {
@@ -58,6 +72,7 @@ final class MediaKeyManager {
                 UserDefaults.standard.set(true, forKey: promptedKey)
                 AccessibilityPermission.ensureTrusted()
             }
+            SpotLog.error("미디어 키 비활성 — 손쉬운 사용 권한 없음", .mediaKeys)
             watchPermission()
             return
         }
@@ -74,13 +89,17 @@ final class MediaKeyManager {
                 return manager.handle(type: type, event: event)
             },
             userInfo: Unmanaged.passUnretained(self).toOpaque()
-        ) else { return }
+        ) else {
+            SpotLog.error("미디어 키 이벤트 탭 생성 실패", .mediaKeys)
+            return
+        }
 
         let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
         self.tap = tap
         self.runLoopSource = source
+        SpotLog.info("미디어 키 이벤트 탭 시작", .mediaKeys)
     }
 
     func stop() {
@@ -126,6 +145,7 @@ final class MediaKeyManager {
     private func handle(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         // 타임아웃이나 사용자 입력으로 탭이 꺼지면 되살린다
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            SpotLog.info("미디어 키 탭이 시스템에 의해 꺼짐 (\(type == .tapDisabledByTimeout ? "타임아웃" : "사용자 입력")) — 재활성화", .mediaKeys)
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
             return Unmanaged.passUnretained(event)
         }
@@ -158,6 +178,7 @@ final class MediaKeyManager {
     /// 커서와 무관하게 한 곳으로 나간다) — MonitorControl의 라우팅과 동일.
     private func perform(_ key: MediaKey, modifiers: NSEvent.ModifierFlags) -> Bool {
         let manager = DisplayControlManager.shared
+        lastKey = (key.label, Date())
         let fine = modifiers.contains(.shift) && modifiers.contains(.option)
         let step = fine ? Self.fineStep : Self.coarseStep
 
