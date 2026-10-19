@@ -9,7 +9,7 @@ Spot은 개인용 macOS 런처(⌥Space) + 키보드 화면 접근 도구(⌃Spa
 
 | 문서 | 대상 | 내용 |
 |---|---|---|
-| [features.md](features.md) | 사용자 | 전체 기능 상세 — 런처의 20개 검색 모드, 키보드 화면 접근 4개 모드, 키 리맵, 설정 창 |
+| [features.md](features.md) | 사용자 | 전체 기능 상세 — 런처의 21개 검색 모드, 키보드 화면 접근 4개 모드, 키 리맵, 설정 창 |
 | [architecture.md](architecture.md) | 개발자 | 코드 구조와 구현 방식 — 검색 파이프라인, 접근성 API 활용, 좌표계, 한글 IME 대응, 상시 유틸리티(리맵·미디어 키·모니터·한영), 권한·서명, 트러블슈팅 |
 | [RELEASE.md](RELEASE.md) | 개발자 | 릴리스·배포 절차 — Developer ID 서명·공증, GitHub Actions, Homebrew tap |
 | [research.md](research.md) | 설계 배경 | 개발 전 조사 — 기존 런처(Raycast/Alfred/LaunchBar…)와 키보드 접근 앱(Homerow/Shortcat/warpd…) 분석 |
@@ -54,6 +54,7 @@ Spot은 개인용 macOS 런처(⌥Space) + 키보드 화면 접근 도구(⌃Spa
 | 2026-08-26 | 런처 명령 HUD (v0.3.6), 메뉴바 모니터별 밝기·볼륨 슬라이더 (v0.3.7) |
 | 2026-09-01 | 창 배치 런처 명령(`창 왼쪽`)·스니펫·브라우저 탭 검색(`탭`, JXA)·서식 제거 붙여넣기 |
 | 2026-10-19 | 창 전환기(`win`, `창전환` — 열린 창 단위 검색·전환, 최소화 창 포함) |
+| 2026-10-19 | 단축어 실행(`단축어 이름` — `shortcuts list` 캐시, `shortcuts run`) |
 
 ## 추가 후보 (미착수)
 
@@ -72,5 +73,4 @@ Spot은 개인용 macOS 런처(⌥Space) + 키보드 화면 접근 도구(⌃Spa
 
 ### 새 기능
 
-- **macOS 단축어(Shortcuts) 실행** — `shortcuts://` URL로 권한 없이 가능
 - **사전 검색** — `dict` 접두사로 시스템 사전 열기

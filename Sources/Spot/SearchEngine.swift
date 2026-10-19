@@ -10,12 +10,14 @@ final class SearchEngine {
     private let emojiProvider = EmojiProvider()
     private let tabProvider = TabProvider()
     private let windowSwitcherProvider = WindowSwitcherProvider()
+    /// lazy 목록 밖에서 만들어 앱 시작 시 단축어 목록을 미리 받아 둔다
+    private let shortcutsProvider = ShortcutsProvider()
 
     /// 동기 프로바이더 — 나열 순서가 정렬 전 기본 순서
     private lazy var syncProviders: [SearchProvider] = [
         CalculatorProvider(), webSearchProvider, AppProvider(), SystemSettingsProvider(),
         SystemActionProvider(), AwakeProvider(), DisplayProvider(), BrightnessScheduleProvider(), TimerProvider(),
-        ProcessProvider(), InputSourceProvider(),
+        ProcessProvider(), shortcutsProvider, InputSourceProvider(),
         BookmarkProvider(), WindowCommandProvider(), SnippetProvider(),
     ]
 
