@@ -9,7 +9,7 @@ Spot은 개인용 macOS 런처(⌥Space) + 키보드 화면 접근 도구(⌃Spa
 
 | 문서 | 대상 | 내용 |
 |---|---|---|
-| [features.md](features.md) | 사용자 | 전체 기능 상세 — 런처의 17개 검색 모드, 키보드 화면 접근 4개 모드, 키 리맵, 설정 창 |
+| [features.md](features.md) | 사용자 | 전체 기능 상세 — 런처의 18개 검색 모드, 키보드 화면 접근 4개 모드, 키 리맵, 설정 창 |
 | [architecture.md](architecture.md) | 개발자 | 코드 구조와 구현 방식 — 검색 파이프라인, 접근성 API 활용, 좌표계, 한글 IME 대응, 상시 유틸리티(리맵·미디어 키·모니터·한영), 권한·서명, 트러블슈팅 |
 | [RELEASE.md](RELEASE.md) | 개발자 | 릴리스·배포 절차 — Developer ID 서명·공증, GitHub Actions, Homebrew tap |
 | [research.md](research.md) | 설계 배경 | 개발 전 조사 — 기존 런처(Raycast/Alfred/LaunchBar…)와 키보드 접근 앱(Homerow/Shortcat/warpd…) 분석 |
@@ -72,7 +72,6 @@ Spot은 개인용 macOS 런처(⌥Space) + 키보드 화면 접근 도구(⌃Spa
 
 ### 새 기능
 
-- **타이머·알람** — `타이머 10분`, 메뉴바 카운트다운 (awake 세션 UI 패턴 재사용)
 - **프로세스 종료** — `종료 크롬`, `quit slack` (강제 종료 포함)
 - **macOS 단축어(Shortcuts) 실행** — `shortcuts://` URL로 권한 없이 가능
 - **사전 검색** — `dict` 접두사로 시스템 사전 열기

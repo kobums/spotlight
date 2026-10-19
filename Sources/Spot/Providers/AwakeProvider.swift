@@ -76,4 +76,30 @@ final class AwakeProvider: SearchProvider {
         guard total > 0, matchedLength >= stripped.count else { return nil }
         return total
     }
+
+    /// 시각 → 0시부터 분. "15:30", "7:05", "7시", "7시30분", 앞에 "오전"/"오후"(am/pm) 토큰 허용.
+    /// (알람·밝기 스케줄 공용)
+    static func parseClockTime(_ text: String) -> Int? {
+        var t = text.trimmingCharacters(in: .whitespaces).lowercased()
+        var pm: Bool?
+        for (prefix, isPM) in [("오전", false), ("오후", true), ("am", false), ("pm", true)] where t.hasPrefix(prefix) {
+            pm = isPM
+            t = String(t.dropFirst(prefix.count)).trimmingCharacters(in: .whitespaces)
+        }
+        t = t.replacingOccurrences(of: " ", with: "")
+        let pattern = #"^(\d{1,2})(?::(\d{2})|시(?:(\d{1,2})분|반)?)$"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: t, range: NSRange(t.startIndex..., in: t)) else { return nil }
+        func group(_ i: Int) -> Int? {
+            Range(match.range(at: i), in: t).flatMap { Int(t[$0]) }
+        }
+        guard var hour = group(1) else { return nil }
+        let minute = group(2) ?? group(3) ?? (t.hasSuffix("반") ? 30 : 0)
+        if let pm {
+            guard (1...12).contains(hour) else { return nil }
+            hour = hour % 12 + (pm ? 12 : 0)
+        }
+        guard hour < 24, minute < 60 else { return nil }
+        return hour * 60 + minute
+    }
 }

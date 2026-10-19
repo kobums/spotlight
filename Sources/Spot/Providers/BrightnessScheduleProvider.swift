@@ -88,26 +88,12 @@ final class BrightnessScheduleProvider: SearchProvider {
         guard !tokens.isEmpty, tokens.count % 2 == 0 else { return nil }
         var entries: [BrightnessScheduler.Entry] = []
         for i in stride(from: 0, to: tokens.count, by: 2) {
-            guard let minute = parseTime(tokens[i]),
+            guard let minute = AwakeProvider.parseClockTime(tokens[i]),
                   let value = Int(tokens[i + 1].replacingOccurrences(of: "%", with: "")),
                   (0...100).contains(value),
                   !entries.contains(where: { $0.minute == minute }) else { return nil }
             entries.append(.init(minute: minute, value: value))
         }
         return entries.sorted { $0.minute < $1.minute }
-    }
-
-    /// "15:30" / "7시" / "7시30분" → 0시부터 분
-    static func parseTime(_ text: String) -> Int? {
-        let pattern = #"^(\d{1,2})(?::(\d{2})|시(?:(\d{1,2})분)?)$"#
-        guard let regex = try? NSRegularExpression(pattern: pattern),
-              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) else { return nil }
-        func group(_ i: Int) -> Int? {
-            Range(match.range(at: i), in: text).flatMap { Int(text[$0]) }
-        }
-        guard let hour = group(1), hour < 24 else { return nil }
-        let minute = group(2) ?? group(3) ?? 0
-        guard minute < 60 else { return nil }
-        return hour * 60 + minute
     }
 }

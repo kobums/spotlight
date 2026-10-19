@@ -73,6 +73,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         AwakeSessionManager.shared.onChange = { [weak self] in
             self?.updateStatusIcon()
         }
+        TimerManager.shared.onChange = { [weak self] in
+            self?.updateStatusIcon()
+        }
+        TimerManager.shared.onTick = { [weak self] in
+            self?.updateStatusTitle()
+        }
     }
 
     func menuWillOpen(_ menu: NSMenu) {
@@ -98,10 +104,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             : "모니터 밝기·볼륨 키"
     }
 
-    /// 깨어있기 세션 중에는 메뉴바 아이콘을 컵으로 바꿔 상태를 드러낸다
+    /// 깨어있기 세션 중에는 메뉴바 아이콘을 컵으로, 타이머·알람 동작 중에는 타이머로 바꿔
+    /// 상태를 드러낸다 (타이머는 아이콘 옆에 남은 시간도)
     private func updateStatusIcon() {
-        let symbol = AwakeSessionManager.shared.isActive ? "cup.and.saucer.fill" : "sparkle.magnifyingglass"
+        let symbol: String
+        if AwakeSessionManager.shared.isActive {
+            symbol = "cup.and.saucer.fill"
+        } else if !TimerManager.shared.items.isEmpty {
+            symbol = "timer"
+        } else {
+            symbol = "sparkle.magnifyingglass"
+        }
         statusItem.button?.image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Spot")
+        updateStatusTitle()
+    }
+
+    /// 가장 먼저 울릴 타이머·알람의 남은 시간 — 없으면 아이콘만 (정사각형 폭)
+    private func updateStatusTitle() {
+        guard let button = statusItem.button else { return }
+        if let text = TimerManager.shared.menuBarText {
+            statusItem.length = NSStatusItem.variableLength
+            button.imagePosition = .imageLeading
+            // 숫자 폭이 고정이어야 1초마다 메뉴바 아이템이 들썩이지 않는다
+            button.attributedTitle = NSAttributedString(string: " " + text, attributes: [
+                .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular),
+            ])
+        } else {
+            statusItem.length = NSStatusItem.squareLength
+            button.imagePosition = .imageOnly
+            button.title = ""
+        }
     }
 
     @objc private func togglePanel() {
