@@ -13,7 +13,8 @@ final class SearchEngine {
     /// 동기 프로바이더 — 나열 순서가 정렬 전 기본 순서
     private lazy var syncProviders: [SearchProvider] = [
         CalculatorProvider(), webSearchProvider, AppProvider(), SystemSettingsProvider(),
-        SystemActionProvider(), AwakeProvider(), DisplayProvider(), BrightnessScheduleProvider(), TimerProvider(), InputSourceProvider(),
+        SystemActionProvider(), AwakeProvider(), DisplayProvider(), BrightnessScheduleProvider(), TimerProvider(),
+        ProcessProvider(), InputSourceProvider(),
         BookmarkProvider(), WindowCommandProvider(), SnippetProvider(),
     ]
 
@@ -107,8 +108,10 @@ final class SearchEngine {
     }
 
     func recordSelection(_ result: SearchResult) {
-        // 계산 결과와 UI 요소·브라우저 탭(위치 기반 id라 재현 안 됨)은 학습 대상에서 제외
-        guard result.kind != .calculator, result.kind != .uiElement, result.kind != .browserTab else { return }
+        // 계산 결과와 UI 요소·브라우저 탭(위치 기반 id라 재현 안 됨)은 학습 대상에서 제외.
+        // 종료 대상 앱도 제외 — 자주 끈 앱이 `종료`에서 시스템 종료를 밀어내지 않게
+        let unlearned: Set<ResultKind> = [.calculator, .uiElement, .browserTab, .runningApp]
+        guard !unlearned.contains(result.kind) else { return }
         FrecencyStore.shared.recordSelection(id: result.id)
     }
 
