@@ -53,13 +53,13 @@ final class AwakeProvider: SearchProvider {
         return out
     }
 
-    /// "30분", "2시간", "1시간 30분", "90m", "2h", "45"(분 해석) → 초
+    /// "30분", "2시간", "1시간 30분", "90m", "2h", "30초", "45"(분 해석) → 초
     static func parseDuration(_ text: String) -> TimeInterval? {
         let t = text.trimmingCharacters(in: .whitespaces).lowercased()
         guard !t.isEmpty else { return nil }
         if let n = Double(t), n > 0 { return n * 60 } // 숫자만 → 분
 
-        let pattern = #"(\d+(?:\.\d+)?)\s*(시간|hours?|hrs?|h|분|minutes?|mins?|m)"#
+        let pattern = #"(\d+(?:\.\d+)?)\s*(시간|hours?|hrs?|h|분|minutes?|mins?|m|초|seconds?|secs?|s)"#
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
         let ns = t as NSString
         var total: TimeInterval = 0
@@ -68,7 +68,8 @@ final class AwakeProvider: SearchProvider {
             let value = Double(ns.substring(with: match.range(at: 1))) ?? 0
             let unit = ns.substring(with: match.range(at: 2))
             let isHour = unit.hasPrefix("시간") || unit.hasPrefix("h")
-            total += value * (isHour ? 3600 : 60)
+            let isSecond = unit == "초" || unit.hasPrefix("s")
+            total += value * (isHour ? 3600 : isSecond ? 1 : 60)
             matchedLength += match.range.length
         }
         // 시간 표현 외의 잡음이 섞여 있으면 실패 처리 ("awake abc" 등)

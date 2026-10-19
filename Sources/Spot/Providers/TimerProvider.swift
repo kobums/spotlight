@@ -45,7 +45,7 @@ final class TimerProvider: SearchProvider {
         let end = TimerManager.clockFormatter.string(from: Date().addingTimeInterval(duration))
         return SearchResult(
             id: "timer:new", kind: .systemAction,
-            title: "\(AwakeSessionManager.format(duration)) 타이머 시작" + (label.map { " — \($0)" } ?? ""),
+            title: "\(TimerManager.format(duration)) 타이머 시작" + (label.map { " — \($0)" } ?? ""),
             subtitle: "\(end)에 알림과 소리 · 메뉴바에 남은 시간 표시",
             symbolName: "timer", score: score,
             action: { _ in TimerManager.shared.addTimer(duration: duration, label: label) })

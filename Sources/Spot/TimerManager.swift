@@ -21,7 +21,7 @@ final class TimerManager: NSObject, UNUserNotificationCenterDelegate {
         var title: String {
             let base: String
             switch kind {
-            case .timer: base = "\(AwakeSessionManager.format(duration)) 타이머"
+            case .timer: base = "\(TimerManager.format(duration)) 타이머"
             case .alarm: base = "\(TimerManager.clockFormatter.string(from: fireDate)) 알람"
             }
             return label.map { "\(base) — \($0)" } ?? base
@@ -106,6 +106,13 @@ final class TimerManager: NSObject, UNUserNotificationCenterDelegate {
     /// 가장 먼저 울릴 항목의 남은 시간 — 메뉴바 제목용. 없으면 nil.
     var menuBarText: String? {
         items.first.map { Self.countdown($0.fireDate.timeIntervalSinceNow) }
+    }
+
+    /// 설정 시간 표시 — 분 단위는 깨어있기와 같은 표기, 초가 섞이면 초까지 ("1분 30초", "45초")
+    static func format(_ duration: TimeInterval) -> String {
+        let total = Int(duration.rounded())
+        guard total % 60 != 0, total < 3600 else { return AwakeSessionManager.format(duration) }
+        return total < 60 ? "\(total)초" : "\(total / 60)분 \(total % 60)초"
     }
 
     /// "9:41" / "1:29:59"
