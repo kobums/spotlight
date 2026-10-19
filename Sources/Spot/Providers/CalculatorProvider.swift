@@ -1,11 +1,16 @@
 import AppKit
 
-/// 수식 계산 + 단위 변환. 결과는 Enter로 클립보드에 복사.
+/// 수식 계산 + 단위 변환 + 날짜·색상·진법(CalculatorExtras). 결과는 Enter로 클립보드에 복사.
 final class CalculatorProvider: SearchProvider {
 
     func results(for query: String) -> [SearchResult] {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return [] }
+
+        if let extra = CalculatorExtras.answer(trimmed) {
+            return [makeResult(text: extra.title, original: trimmed, note: extra.note,
+                               copyText: extra.copy, icon: extra.color.map(Self.swatch))]
+        }
 
         if let (converted, note) = conversion(trimmed) ?? singleQuantity(trimmed) {
             return [makeResult(text: converted, original: trimmed, note: note)]
@@ -24,18 +29,33 @@ final class CalculatorProvider: SearchProvider {
         return [makeResult(text: format(value), original: trimmed)]
     }
 
-    private func makeResult(text: String, original: String, note: String = "") -> SearchResult {
+    private func makeResult(text: String, original: String, note: String = "",
+                            copyText: String? = nil, icon: NSImage? = nil) -> SearchResult {
         SearchResult(
             id: "calc:\(original)",
             kind: .calculator,
             title: text,
             subtitle: note.isEmpty ? "\(original) — Enter로 복사" : "\(original) — \(note)",
+            icon: icon,
             symbolName: "equal.circle.fill",
             score: Score.calculator, // 계산 결과는 항상 최상단
             action: { _ in
-                ClipboardStore.shared.copy(text)
+                ClipboardStore.shared.copy(copyText ?? text)
             }
         )
+    }
+
+    /// 색상 변환 결과의 견본 아이콘
+    private static func swatch(_ color: NSColor) -> NSImage {
+        NSImage(size: NSSize(width: 32, height: 32), flipped: false) { rect in
+            let path = NSBezierPath(roundedRect: rect.insetBy(dx: 3, dy: 3), xRadius: 7, yRadius: 7)
+            color.setFill()
+            path.fill()
+            NSColor.separatorColor.setStroke()
+            path.lineWidth = 1
+            path.stroke()
+            return true
+        }
     }
 
     private func format(_ value: Double) -> String {
