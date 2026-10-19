@@ -31,6 +31,11 @@ final class SearchViewModel: ObservableObject {
             self.results = windowResults
             self.selectedIndex = 0
         }
+        engine.onEdenResults = { [weak self] edenResults in
+            guard let self, EdenProvider.isEdenQuery(self.query) else { return }
+            self.results = edenResults
+            self.selectedIndex = 0
+        }
         engine.onFileResults = { [weak self] fileResults in
             guard let self else { return }
             let selectedID = self.results.indices.contains(self.selectedIndex)

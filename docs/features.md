@@ -270,6 +270,26 @@ Esc는 Alfred 방식: 입력이 있으면 지우고, 비어 있으면 닫는다.
   단축어 안의 동작이 요구하는 권한(위치·파일 등)은 어느 방식이든 단축어가 따로 묻는다
 - 이름이 같은 단축어가 있어도 식별자(UUID)로 실행하므로 고른 것이 정확히 실행된다
 
+### 1-22. eden 터미널 세션
+
+`eden`으로 진입 — [eden](https://github.com/kobums/eden) 터미널의 세션을 검색해 그 탭으로 가거나 명령을 보낸다.
+
+| 입력 | 동작 |
+|---|---|
+| `eden` | 세션 전체 (ID순) + 맨 아래 **eden 열기** (앱 실행 — `eden`만 쳐도 앱을 열 수 있게) |
+| `eden api`, `eden develop`, `eden make`, `eden 3` | 이름·cwd 폴더·명령·ID로 fuzzy 검색 |
+| `eden api > make test` | `>` 뒤 텍스트를 그 세션에 입력 (`eden send <id> -- make test`, 끝에 Enter) |
+
+- 행: 제목 `이름 #ID`(이름 없으면 cwd 폴더), 부제 `실행 중: 명령` 또는 `대기 · 마지막 명령 ✓/✗ 종료코드` — `~/cwd`
+- **Enter** → `eden focus <id>` (GUI가 그 탭을 앞으로, GUI가 없으면 띄움) 후 eden 활성화
+- **⌥Enter** → 세션 ID 복사 (보내기 행에서도 동일)
+- 목록은 `eden list --json` (2초 캐시). 필드: id·pid·cols·lines·running·last_exit·cwd·command·commands·completions·name
+- **버전 확인**: eden 0.2.1 이하에는 CLI가 없어 인자를 줘도 GUI가 하나 더 뜬다. 그래서 바이너리를 부르기 전에
+  번들 `Info.plist`의 `CFBundleShortVersionString`이 **0.2.2 이상**인지 매번 확인하고, 아니면
+  "eden 0.2.2 이상 필요" 안내 행만 보여 준다(eden을 실행하지 않음). `focus`·`rename`·`--name`은 0.2.2부터
+- 바이너리는 `/Applications/eden.app/Contents/MacOS/eden`(또는 `~/Applications`) 우선, 없으면 PATH·Homebrew 경로의
+  `eden`을 심볼릭 링크로 따라가 그 앱 번들의 버전을 확인한다. 번들 밖 바이너리는 버전을 알 수 없어 부르지 않는다
+
 ---
 
 ## 2. 키보드 화면 접근 (⌃Space)

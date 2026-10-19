@@ -10,6 +10,7 @@ final class SearchEngine {
     private let emojiProvider = EmojiProvider()
     private let tabProvider = TabProvider()
     private let windowSwitcherProvider = WindowSwitcherProvider()
+    private let edenProvider = EdenProvider()
     /// lazy 목록 밖에서 만들어 앱 시작 시 단축어 목록을 미리 받아 둔다
     private let shortcutsProvider = ShortcutsProvider()
 
@@ -49,6 +50,12 @@ final class SearchEngine {
     var onWindowResults: (([SearchResult]) -> Void)? {
         get { windowSwitcherProvider.onResults }
         set { windowSwitcherProvider.onResults = newValue }
+    }
+
+    /// eden 세션 검색(비동기) 결과 콜백 — 전용 모드라 기존 결과를 통째로 교체
+    var onEdenResults: (([SearchResult]) -> Void)? {
+        get { edenProvider.onResults }
+        set { edenProvider.onResults = newValue }
     }
 
     /// 동기 프로바이더 결과 (즉시 표시)
@@ -100,6 +107,13 @@ final class SearchEngine {
             return []
         }
 
+        // eden 세션 모드("eden")도 전용 — 결과는 onEdenResults 콜백으로
+        if EdenProvider.isEdenQuery(trimmed) {
+            fileProvider.search("")
+            edenProvider.search(trimmed)
+            return []
+        }
+
         var results = syncProviders.flatMap { $0.results(for: trimmed) }
         applyFrecencyBoost(to: &results)
         results.sort { $0.score > $1.score }
@@ -124,9 +138,9 @@ final class SearchEngine {
     }
 
     func recordSelection(_ result: SearchResult) {
-        // 계산 결과와 UI 요소·브라우저 탭·창(위치 기반 id라 재현 안 됨)은 학습 대상에서 제외.
+        // 계산 결과와 UI 요소·브라우저 탭·창·eden 세션(일시적인 id라 재현 안 됨)은 학습 대상에서 제외.
         // 종료 대상 앱도 제외 — 자주 끈 앱이 `종료`에서 시스템 종료를 밀어내지 않게
-        let unlearned: Set<ResultKind> = [.calculator, .uiElement, .browserTab, .window, .runningApp]
+        let unlearned: Set<ResultKind> = [.calculator, .uiElement, .browserTab, .window, .edenSession, .runningApp]
         guard !unlearned.contains(result.kind) else { return }
         FrecencyStore.shared.recordSelection(id: result.id)
     }
