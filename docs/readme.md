@@ -76,4 +76,3 @@ Spot은 개인용 macOS 런처(⌥Space) + 키보드 화면 접근 도구(⌃Spa
 - **프로세스 종료** — `종료 크롬`, `quit slack` (강제 종료 포함)
 - **macOS 단축어(Shortcuts) 실행** — `shortcuts://` URL로 권한 없이 가능
 - **사전 검색** — `dict` 접두사로 시스템 사전 열기
-- **밝기 스케줄** — 시간대별 모니터 밝기 자동 조절 (Lunar 방식, DDC 엔진 재사용)

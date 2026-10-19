@@ -60,6 +60,12 @@ final class DisplayControlManager {
     /// 마지막 스캔 시각 — 진단 화면에서 "언제 기준 정보인가"를 보여준다
     private(set) var lastScan: Date?
 
+    /// 사용자가 밝기를 직접 바꿨을 때 (런처 명령·슬라이더·미디어 키). 밝기 스케줄이
+    /// "이 구간은 사용자가 정했다"를 알아채는 데 쓴다. 스케줄 자신의 적용은 부르지 않는다.
+    var onUserBrightnessChange: (() -> Void)?
+    /// 스캔으로 모니터 목록이 새로 잡혔을 때 (시작·연결·잠자기 해제 후 재스캔)
+    var onMonitorsChanged: (() -> Void)?
+
     private let queue = DispatchQueue(label: "spot.display", qos: .userInitiated)
     private let gamma = GammaDimmer()
     /// 조작 피드백 표시기 — 미디어 키·런처 명령 공용 (패널이 하나라 첫 대상 모니터에 띄운다)
@@ -163,6 +169,7 @@ final class DisplayControlManager {
         monitors = result
         lastScan = Date()
         gamma.reapplyAll()
+        onMonitorsChanged?()
 
         let summary = result.map { monitor in
             monitor.isDDC
@@ -210,6 +217,19 @@ final class DisplayControlManager {
 
     /// 밝기 설정. target이 nil이면 전체. relative면 value를 증감량으로 해석.
     func setBrightness(_ value: Int, target: String?, relative: Bool) {
+        let feedback = setBrightnessCore(value, target: target, relative: relative)
+        if let feedback { hud.show(feedback) }
+        onUserBrightnessChange?()
+    }
+
+    /// 밝기 스케줄 적용 — 런처 명령과 같은 경로(DDC·감마 모두)지만 HUD를 띄우지 않고
+    /// 사용자 조작으로 기록하지 않는다. 대상 모니터가 없으면 false.
+    @discardableResult
+    func applyScheduledBrightness(_ value: Int) -> Bool {
+        setBrightnessCore(value, target: nil, relative: false) != nil
+    }
+
+    private func setBrightnessCore(_ value: Int, target: String?, relative: Bool) -> Feedback? {
         var feedback: Feedback?
         for index in matching(target) {
             // 절대값 지정은 결합 디밍을 걷어내고 그 값으로 — "밝기 50"은 항상 백라이트 50
@@ -220,7 +240,7 @@ final class DisplayControlManager {
                                     value: applied, muted: false, displayID: monitors[index].displayID)
             }
         }
-        if let feedback { hud.show(feedback) }
+        return feedback
     }
 
     /// 대비 설정 (DDC 대비 VCP를 지원하는 모니터만)
@@ -282,6 +302,7 @@ final class DisplayControlManager {
             setSwDim(at: index, to: min(100, 100 + value))
         }
         applyBrightness(at: index, to: max(0, value))
+        onUserBrightnessChange?()
     }
 
     /// 볼륨 슬라이더 (음소거 상태면 해제된다)
@@ -307,6 +328,7 @@ final class DisplayControlManager {
             }
         }
         if let feedback { hud.show(feedback) }
+        onUserBrightnessChange?()
         return feedback
     }
 

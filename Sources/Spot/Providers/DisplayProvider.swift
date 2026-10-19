@@ -37,6 +37,8 @@ final class DisplayProvider: SearchProvider {
             }
         }
         guard let baseScore, let command else { return [] }
+        // "밝기 스케줄 …"은 BrightnessScheduleProvider 담당
+        if parts.count >= 2, ["스케줄", "스케쥴", "schedule", "일정"].contains(parts[1].lowercased()) { return [] }
 
         // 모니터가 하나도 안 잡힌 상태가 진단이 가장 필요한 때라, 아래 "모니터 없음"보다 먼저 본다
         if parts.count == 2, Self.diagnoseWords.contains(parts[1].lowercased()) {
