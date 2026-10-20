@@ -1,5 +1,5 @@
 name: TAP token check
-# TAP_REPO_TOKEN 이 homebrew-tap 에 쓰기 가능한지만 확인하는 임시 워크플로 (검증 후 삭제)
+# TAP_REPO_TOKEN 진단용 임시 워크플로 (검증 후 삭제). 토큰 값은 출력하지 않는다.
 on:
   workflow_dispatch:
 permissions: {}
@@ -7,17 +7,34 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: tap 쓰기 권한 확인
+      - name: 토큰 형태 점검 (값 미출력)
         env:
           TAP_REPO_TOKEN: ${{ secrets.TAP_REPO_TOKEN }}
         run: |
-          code=$(curl -s -o /tmp/out.json -w '%{http_code}' \
-            -H "Authorization: Bearer ${TAP_REPO_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/kobums/homebrew-tap)
-          echo "HTTP $code"
-          if [ "$code" != "200" ]; then echo "토큰이 저장소를 읽지 못함"; exit 1; fi
-          push=$(python3 -c "import json;print(json.load(open('/tmp/out.json')).get('permissions',{}).get('push'))")
-          echo "push 권한: $push"
-          [ "$push" = "True" ] || { echo "쓰기 권한 없음"; exit 1; }
-          echo "✅ TAP_REPO_TOKEN 으로 homebrew-tap 에 push 가능"
+          raw="$TAP_REPO_TOKEN"
+          printf '길이: %s\n' "${#raw}"
+          case "$raw" in
+            github_pat_*) echo "형식: fine-grained (github_pat_)" ;;
+            ghp_*)        echo "형식: classic (ghp_)" ;;
+            "")           echo "형식: 값이 비어 있음" ;;
+            *)            echo "형식: 알 수 없음 — 접두사가 github_pat_/ghp_ 가 아님" ;;
+          esac
+          trimmed=$(printf '%s' "$raw" | tr -d ' \t\r\n')
+          printf '공백·줄바꿈 제거 후 길이: %s\n' "${#trimmed}"
+          [ "${#raw}" = "${#trimmed}" ] && echo "공백 섞임: 없음" || echo "공백 섞임: 있음 (이게 401 원인)"
+
+      - name: 인증 호출 비교
+        env:
+          TAP_REPO_TOKEN: ${{ secrets.TAP_REPO_TOKEN }}
+        run: |
+          tok=$(printf '%s' "$TAP_REPO_TOKEN" | tr -d ' \t\r\n')
+          anon=$(curl -s -o /dev/null -w '%{http_code}' https://api.github.com/repos/kobums/homebrew-tap)
+          echo "익명 호출(공개 저장소라 200 기대): $anon"
+          b=$(curl -s -o /tmp/b.json -w '%{http_code}' -H "Authorization: Bearer $tok" https://api.github.com/repos/kobums/homebrew-tap)
+          echo "Bearer: $b"
+          t=$(curl -s -o /tmp/t.json -w '%{http_code}' -H "Authorization: token $tok" https://api.github.com/repos/kobums/homebrew-tap)
+          echo "token:  $t"
+          u=$(curl -s -o /tmp/u.json -w '%{http_code}' -H "Authorization: Bearer $tok" https://api.github.com/user)
+          echo "/user:  $u"
+          if [ "$u" = "200" ]; then python3 -c "import json;d=json.load(open('/tmp/u.json'));print('토큰 소유 계정:', d.get('login'))"; fi
+          if [ "$b" = "200" ]; then python3 -c "import json;print('push 권한:', json.load(open('/tmp/b.json')).get('permissions',{}).get('push'))"; fi
