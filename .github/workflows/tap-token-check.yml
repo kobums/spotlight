@@ -1,0 +1,23 @@
+name: TAP token check
+# TAP_REPO_TOKEN 이 homebrew-tap 에 쓰기 가능한지만 확인하는 임시 워크플로 (검증 후 삭제)
+on:
+  workflow_dispatch:
+permissions: {}
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: tap 쓰기 권한 확인
+        env:
+          TAP_REPO_TOKEN: ${{ secrets.TAP_REPO_TOKEN }}
+        run: |
+          code=$(curl -s -o /tmp/out.json -w '%{http_code}' \
+            -H "Authorization: Bearer ${TAP_REPO_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/kobums/homebrew-tap)
+          echo "HTTP $code"
+          if [ "$code" != "200" ]; then echo "토큰이 저장소를 읽지 못함"; exit 1; fi
+          push=$(python3 -c "import json;print(json.load(open('/tmp/out.json')).get('permissions',{}).get('push'))")
+          echo "push 권한: $push"
+          [ "$push" = "True" ] || { echo "쓰기 권한 없음"; exit 1; }
+          echo "✅ TAP_REPO_TOKEN 으로 homebrew-tap 에 push 가능"
