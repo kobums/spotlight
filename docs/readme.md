@@ -2,19 +2,20 @@
 
 Spot은 개인용 macOS 런처(⌥Space) + 키보드 화면 접근 도구(⌃Space)에,
 키 리맵(Karabiner 대체)·모니터 밝기/볼륨(MonitorControl 대체)·앱별 한/영 전환
-(Input Source Pro 대체) 상시 유틸리티를 더한 앱이다.
+(Input Source Pro 대체) 상시 유틸리티와 "지금 재생 중" 위젯을 더한 앱이다.
 빠른 시작은 [루트 README](../README.md), 그 이상은 아래 문서를 본다.
 
 ## 문서 목록
 
 | 문서 | 대상 | 내용 |
 |---|---|---|
-| [features.md](features.md) | 사용자 | 전체 기능 상세 — 런처의 22개 검색 모드, 키보드 화면 접근 4개 모드, 키 리맵, 설정 창 |
+| [features.md](features.md) | 사용자 | 전체 기능 상세 — 런처의 22개 검색 모드, 키보드 화면 접근 4개 모드, 키 리맵, 설정 창, 지금 재생 중 위젯 |
 | [architecture.md](architecture.md) | 개발자 | 코드 구조와 구현 방식 — 검색 파이프라인, 접근성 API 활용, 좌표계, 한글 IME 대응, 상시 유틸리티(리맵·미디어 키·모니터·한영), 권한·서명, 트러블슈팅 |
 | [RELEASE.md](RELEASE.md) | 개발자 | 릴리스·배포 절차 — Developer ID 서명·공증, GitHub Actions, Homebrew tap |
 | [research.md](research.md) | 설계 배경 | 개발 전 조사 — 기존 런처(Raycast/Alfred/LaunchBar…)와 키보드 접근 앱(Homerow/Shortcat/warpd…) 분석 |
 | [window-management.md](window-management.md) | 설계 배경 | 창 관리(Rectangle 대체) 조사·설계 — 채택 범위, 창 모드 키맵, AX 창 이동 함정 |
 | [display-control.md](display-control.md) | 설계 배경 | 모니터 제어(MonitorControl 대체) 조사·설계 — DDC/CI, 비공개 API, 감마 폴백, 미디어 키, 오디오 라우팅, **디버깅 이력과 막다른 길 기록** |
+| [now-playing.md](now-playing.md) | 개발자 | "지금 재생 중" 위젯 — 구조(SwiftPM 본체 + Xcode 위젯 확장), 동작 방식, 다른 앱의 재생, 권한·서명, 확인 도구 |
 | [input-source.md](input-source.md) | 설계 배경 | 입력 소스 자동 전환(Input Source Pro 대체) 조사·설계 — TIS, 앱별 규칙, 인디케이터 |
 
 ## 구현 연혁 요약
@@ -57,6 +58,7 @@ Spot은 개인용 macOS 런처(⌥Space) + 키보드 화면 접근 도구(⌃Spa
 | 2026-10-19 | 단축어 실행(`단축어 이름` — `shortcuts list` 캐시, `shortcuts run`) |
 | 2026-10-19 | 계산기 확장 — 날짜 계산(`3주 후`·`D-100`·`…까지`)·색상 변환(hex/rgb/hsl)·진법 변환 |
 | 2026-10-19 | eden 연동 — `eden` 세션 검색·`eden focus`·`> 명령` 보내기 (eden 0.2.2+ 버전 확인 후에만 실행) |
+| 2026-11-27 | "지금 재생 중" 위젯 — NowPlaying 앱을 합침 (위젯 확장 + 도우미를 Xcode로 빌드해 번들에 포함), `make install`을 Developer ID 서명으로 |
 
 ## 추가 후보 (미착수)
 

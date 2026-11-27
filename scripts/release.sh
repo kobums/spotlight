@@ -29,7 +29,7 @@ REPO="kobums/spotlight"
 
 # --- 1. Developer ID 인증서 확인 ---
 IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null \
-    | grep "Developer ID Application" | head -1 | awk '{print $2}')
+    | awk '/Developer ID Application/ && !found {print $2; found=1}' || true)
 if [ -z "$IDENTITY" ]; then
     echo "❌ Developer ID Application 인증서가 없습니다." >&2
     echo "   Xcode > Settings > Accounts > Manage Certificates > + > Developer ID Application" >&2
@@ -38,7 +38,8 @@ fi
 echo "▶ Developer ID: $IDENTITY"
 
 # --- 2. 빌드 + Developer ID 서명 + 하드닝 ---
-SIGN_IDENTITY="$IDENTITY" HARDENED=1 ./scripts/make-app.sh
+# 배포본은 항상 release. 셸에 SPOT_CONFIG가 남아 있어도 Debug로 나가지 않게 못 박는다.
+SPOT_CONFIG=release SIGN_IDENTITY="$IDENTITY" HARDENED=1 ./scripts/make-app.sh
 
 # --- 3. 공증용 zip (ditto 로 서명·번들 구조 보존) ---
 mkdir -p "$DIST"

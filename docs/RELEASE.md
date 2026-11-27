@@ -96,9 +96,13 @@ git push origin main --tags
 brew update && brew upgrade --cask spot
 ```
 
-> **실사용 Mac의 /Applications에는 항상 brew 배포본(Developer ID 서명)을 둘 것.**
-> `make install`(Apple Development 서명)로 덮으면 TCC 손쉬운 사용 허용이 무효가 되어
-> AX 기반 기능이 조용히 죽는다 — [architecture.md의 서명과 TCC](architecture.md#서명과-tcc--중요) 참조.
+> **실사용 Mac의 /Applications에는 Developer ID 서명본만 둘 것.**
+> Apple Development 서명본으로 덮으면 TCC 손쉬운 사용 허용이 무효가 되어 AX 기반 기능이 조용히 죽는다.
+> `make install`은 Developer ID 인증서가 있는 맥에서는 그것으로 서명하므로 괜찮고, 없는 맥에서는
+> brew 배포본을 써야 한다 — [architecture.md의 서명과 TCC](architecture.md#서명과-tcc--중요) 참조.
+
+릴리스 빌드에는 Xcode가 필요하다: "지금 재생 중" 위젯 확장과 도우미 라이브러리를 `xcodebuild`로 빌드해
+번들에 넣고(`Widget/SpotWidget.xcodeproj`), `make-app.sh`가 도우미 → 위젯 확장 → 앱 순서로 서명한다.
 
 ### 필요한 저장소 Secrets
 
