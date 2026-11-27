@@ -3,5 +3,8 @@ build/
 dist/
 .DS_Store
 *.xcodeproj
+!Widget/SpotWidget.xcodeproj
+xcuserdata/
+*.xcuserstate
 .swiftpm/
 .vscode/
