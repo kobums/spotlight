@@ -10,9 +10,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var keyRemapMenuItem: NSMenuItem!
     private var mediaKeyMenuItem: NSMenuItem!
     private let displayMenuSection = DisplayMenuSection()
+    private var nowPlayingMenuSection: NowPlayingMenuSection!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         panelController = PanelController()
+        nowPlayingMenuSection = NowPlayingMenuSection()
         hintModeController = HintModeController()
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -36,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         mediaKeyMenuItem = NSMenuItem(title: "모니터 밝기·볼륨 키", action: #selector(toggleMediaKeys), keyEquivalent: "")
         mediaKeyMenuItem.target = self
         menu.addItem(mediaKeyMenuItem)
+        menu.addItem(nowPlayingMenuSection.menuItem)
         menu.addItem(.separator())
         let settingsItem = NSMenuItem(title: "설정…", action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
@@ -69,6 +72,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         _ = DisplayControlManager.shared
         BrightnessScheduler.shared.start()
         MediaKeyManager.shared.start()
+        // "지금 재생 중" 위젯: 위젯이 놓여 있을 때만 재생 상태를 따라간다
+        NowPlayingService.shared.start()
 
         AwakeSessionManager.shared.onChange = { [weak self] in
             self?.updateStatusIcon()
@@ -81,7 +86,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    /// 위젯을 누르면 `spot://now-playing`으로 불린다
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            _ = NowPlayingService.shared.handle(url)
+        }
+    }
+
     func menuWillOpen(_ menu: NSMenu) {
+        // 하위 메뉴도 같은 delegate를 타지 않게 상태 메뉴일 때만
+        guard menu === statusItem.menu else { return }
+        nowPlayingMenuSection.refresh()
         // 모니터별 밝기·볼륨 슬라이더 (MonitorControl 스타일) — 열 때마다 최신 값으로
         displayMenuSection.refresh(menu: menu)
         loginMenuItem.state = LoginItemManager.isEnabled ? .on : .off
