@@ -59,7 +59,8 @@ Widget/                         Xcode로 빌드하는 쪽
 
 `NowPlayingService`는 Spot이 켜질 때 `WidgetCenter.getCurrentConfigurations`로 "지금 재생 중" 위젯이 놓여 있는지 본다.
 놓여 있으면 `MusicMonitor`를 켠다. Spot이 켜진 뒤에 위젯을 추가한 경우를 위해, 위젯은 타임라인을 만들 때마다
-Darwin 알림(`WidgetPresence`)을 보내고 Spot은 그것을 받으면 켠다. 위젯을 지워도 Spot을 다시 켤 때까지는 계속 돈다.
+Darwin 알림(`WidgetPresence`)을 보낸다. 이 알림은 같은 사용자의 어떤 프로세스든 보낼 수 있어서, Spot은 알림을 받으면
+바로 켜지 않고 위젯이 놓여 있는지 다시 확인한 뒤에 켠다. 위젯을 지워도 Spot을 다시 켤 때까지는 계속 돈다.
 
 ## 동작 방식
 
@@ -127,7 +128,7 @@ macOS 26에서 잰 값: 중간 위젯은 344×164pt, 안쪽 여백 18pt, 모서�
 
 ```sh
 make install                  # 빌드 → /Applications/Spot.app 설치 → 실행 (Developer ID가 있으면 그것으로 서명)
-CONFIG=debug make install     # 로그에 곡 제목까지 남고 debug_state.sh를 듣는 Debug 빌드
+SPOT_CONFIG=debug make install  # 로그에 곡 제목까지 남고 debug_state.sh를 듣는 Debug 빌드
 SKIP_WIDGET=1 make build      # 위젯 없이 (Xcode가 없을 때)
 ```
 

@@ -19,6 +19,7 @@ final class NowPlayingService {
     private let log = Logger(subsystem: "com.gowoobro.spot.nowplaying", category: "service")
     private(set) var monitor: MusicMonitor?
     private var didStart = false
+    private var isCheckingWidget = false
 
     /// 이 실행 환경에서 위젯 기능을 쓸 수 있는지. 못 쓰면 메뉴에도 내놓지 않는다.
     let isSupported: Bool = {
@@ -40,18 +41,22 @@ final class NowPlayingService {
     func start() {
         guard isSupported, !didStart else { return }
         didStart = true
-        // 앱이 켜진 뒤에 위젯을 추가한 경우.
+        // 앱이 켜진 뒤에 위젯을 추가한 경우. 이 알림은 같은 사용자의 어떤 프로세스든 보낼 수 있으므로
+        // 그대로 믿지 않고, 위젯이 실제로 놓여 있는지 확인한 뒤에 켠다.
+        // 막 추가한 위젯은 목록에 조금 늦게 나타날 수 있어 한 번 더 본다.
         WidgetPresence.observe { [weak self] in
-            MainActor.assumeIsolated { self?.activate(reason: "위젯이 그려짐") }
+            MainActor.assumeIsolated {
+                self?.activateIfWidgetIsPlaced(reason: "위젯이 그려짐", retryAfter: .seconds(2))
+            }
         }
-        activateIfWidgetIsPlaced()
+        activateIfWidgetIsPlaced(reason: "위젯이 놓여 있음")
     }
 
     func setEnabled(_ enabled: Bool) {
         guard isSupported, enabled != isEnabled else { return }
         UserDefaults.standard.set(enabled, forKey: Self.enabledKey)
         if enabled {
-            activateIfWidgetIsPlaced()
+            activateIfWidgetIsPlaced(reason: "메뉴에서 켬")
         } else {
             monitor?.stop()
         }
@@ -79,16 +84,34 @@ final class NowPlayingService {
 
     // MARK: - 위젯이 놓여 있을 때만 켜기
 
-    private func activateIfWidgetIsPlaced() {
-        guard isEnabled else { return }
+    /// - Parameter retryAfter: 위젯이 안 보이면 이만큼 뒤에 한 번 더 확인한다.
+    private func activateIfWidgetIsPlaced(reason: String, retryAfter: Duration? = nil) {
+        // 켜져 있는 동안에는 위젯이 그려질 때마다 알림이 온다. 그때마다 묻지 않는다.
+        guard isSupported, isEnabled, !isActive, !isCheckingWidget else { return }
+        isCheckingWidget = true
         WidgetCenter.shared.getCurrentConfigurations { [weak self] result in
             let placed: Bool
+            var failure: String?
             switch result {
-            case .success(let widgets): placed = widgets.contains { $0.kind == WidgetKind.nowPlaying }
-            case .failure: placed = false
+            case .success(let widgets):
+                placed = widgets.contains { $0.kind == WidgetKind.nowPlaying }
+            case .failure(let error):
+                placed = false
+                failure = error.localizedDescription
             }
-            guard placed else { return }
-            Task { @MainActor in self?.activate(reason: "위젯이 놓여 있음") }
+            Task { @MainActor in
+                guard let self else { return }
+                self.isCheckingWidget = false
+                if let failure {
+                    self.log.error("놓인 위젯을 확인하지 못함: \(failure, privacy: .public)")
+                }
+                if placed {
+                    self.activate(reason: reason)
+                } else if let retryAfter {
+                    try? await Task.sleep(for: retryAfter)
+                    self.activateIfWidgetIsPlaced(reason: reason)
+                }
+            }
         }
     }
 
