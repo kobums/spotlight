@@ -1,5 +1,5 @@
 #!/bin/sh
-# Debug 빌드 전용: 음악을 틀지 않고 위젯에 보여 줄 상태를 바꾼다. (Debug로 설치했을 때만 듣는다: CONFIG=debug make install)
+# Debug 빌드 전용: 음악을 틀지 않고 위젯에 보여 줄 상태를 바꾼다. (Debug로 설치했을 때만 듣는다: SPOT_CONFIG=debug make install)
 #
 #   Widget/tools/debug_state.sh playing [위치(초)]   지금 곡을 그 위치에서 재생 중인 것처럼
 #   Widget/tools/debug_state.sh paused [위치(초)]    일시 정지한 것처럼

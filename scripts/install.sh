@@ -10,8 +10,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [ -z "${SIGN_IDENTITY:-}" ]; then
+    # grep은 못 찾으면 실패를 돌려줘 pipefail 아래에서 스크립트를 끝낸다. awk 하나로 찾는다.
     DEVELOPER_ID=$(security find-identity -v -p codesigning 2>/dev/null \
-        | grep "Developer ID Application" | head -1 | awk '{print $2}')
+        | awk '/Developer ID Application/ && !found {print $2; found=1}' || true)
     if [ -n "$DEVELOPER_ID" ]; then
         export SIGN_IDENTITY="$DEVELOPER_ID" HARDENED=1
     fi

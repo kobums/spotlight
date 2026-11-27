@@ -4,7 +4,7 @@
 # 서명 방식은 환경 변수로 제어한다:
 #   SIGN_IDENTITY  서명 identity (지정 없으면 Apple Development 자동 탐지, 없으면 ad-hoc)
 #   HARDENED=1     하드닝된 런타임 + 보안 타임스탬프로 서명 (공증 전제 조건)
-#   CONFIG=debug   Debug로 빌드 (기본 release). 위젯 확인 도구(Widget/tools/debug_state.sh)는 Debug에서만 듣는다
+#   SPOT_CONFIG=debug  Debug로 빌드 (기본 release). 위젯 확인 도구(Widget/tools/debug_state.sh)는 Debug에서만 듣는다
 #   SKIP_WIDGET=1  위젯 확장을 빌드·포함하지 않는다 (Xcode 없이 빌드할 때)
 #
 # "지금 재생 중" 위젯 확장(SpotWidget.appex)과 도우미 라이브러리는 SwiftPM으로 만들 수 없어
@@ -16,11 +16,11 @@ cd "$(dirname "$0")/.."
 VERSION=$(cat VERSION 2>/dev/null || echo "0.1.0")
 BUILD=$(git rev-list --count HEAD 2>/dev/null || echo "1")
 
-CONFIG="${CONFIG:-release}"
+CONFIG="${SPOT_CONFIG:-release}"
 case "$CONFIG" in
     release) XCODE_CONFIG=Release ;;
     debug) XCODE_CONFIG=Debug ;;
-    *) echo "CONFIG는 release 또는 debug" >&2; exit 1 ;;
+    *) echo "SPOT_CONFIG는 release 또는 debug" >&2; exit 1 ;;
 esac
 
 swift build -c "$CONFIG"
@@ -90,7 +90,9 @@ PLIST
 # 배포본은 release.sh(Developer ID + 공증)로 만들 것.
 IDENTITY="${SIGN_IDENTITY:-}"
 if [ -z "$IDENTITY" ]; then
-    IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | grep "Apple Development" | head -1 | awk '{print $2}')
+    # grep은 못 찾으면 실패를 돌려줘 pipefail 아래에서 ad-hoc 폴백 전에 스크립트를 끝낸다. awk 하나로 찾는다.
+    IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null \
+        | awk '/Apple Development/ && !found {print $2; found=1}' || true)
 fi
 
 SIGN_ARGS=(--force --sign "${IDENTITY:--}")
