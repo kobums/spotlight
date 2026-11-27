@@ -29,6 +29,7 @@
   InputSourceManager     앱 활성화 감시 → 앱별 한/영 규칙 적용 + 배지
   AwakeSessionManager    잠자기 방지 어설션
   ClipboardStore         0.5초 폴링 히스토리 (텍스트·이미지·pin)
+  NowPlayingService      "지금 재생 중" 위젯에 재생 상태 공급 (위젯이 놓여 있을 때만) — now-playing.md
 ```
 
 ## 런처 파이프라인
@@ -239,15 +240,21 @@ macOS TCC(권한 DB)는 앱을 **코드 서명 기준**으로 식별한다.
 
 - **ad-hoc 서명은 빌드마다 서명이 바뀐다** → 재설치하면 기존 "허용" 기록과 서명이 안 맞아
   조용히 untrusted가 되고, 기록이 이미 있어서 **권한 프롬프트도 다시 안 뜬다**
-- `make-app.sh`(로컬 빌드)는 **Apple Development 인증서**가 있으면 그걸로 서명한다
+- `make-app.sh`(`make build`)는 **Apple Development 인증서**가 있으면 그걸로 서명한다
 - CI 릴리스(brew 배포본)는 **Developer ID Application**으로 서명·공증한다
+- `install.sh`(`make install`)는 **Developer ID 인증서가 있으면 그것으로** 서명한다 (없으면 Apple Development)
 
-**실사용 Mac의 /Applications에는 항상 brew 배포본을 둘 것.** 한 번 Developer ID 서명본에
-손쉬운 사용을 허용하고 나면 TCC 기록이 그 서명 요구조건에 묶인다 — 이후 `make install`로
-Apple Development 서명본을 덮으면 **TCC DB상 "허용"인데도 AX가 무효**가 되어, AX가 필요한
+**실사용 Mac의 /Applications에는 Developer ID 서명본만 둘 것.** 한 번 Developer ID 서명본에
+손쉬운 사용을 허용하고 나면 TCC 기록이 그 서명 요구조건에 묶인다 — 이후 Apple Development
+서명본을 덮으면 **TCC DB상 "허용"인데도 AX가 무효**가 되어, AX가 필요한
 기능(힌트 모드·창 단축키·미디어 키)만 조용히 죽는다 (⌥Space 런처는 AX 불필요라 멀쩡해서
-원인을 찾기 어렵다 — 2026-08-18 실제 겪은 사례). 기능 확인 후에는 `make release-ci V=x.y.z`로
-배포하고 `brew upgrade --cask spot`으로 교체한다.
+원인을 찾기 어렵다 — 2026-08-18 실제 겪은 사례).
+
+그래서 2026-11-27부터 `make install`은 Developer ID로 서명한다. 서명 요구조건
+(`codesign -d -r- Spot.app`)이 brew 배포본과 같아 허용이 그대로 유지된다. 공증은 하지 않지만
+로컬에서 만든 앱에는 격리 표시가 없어 Gatekeeper가 막지 않는다. Developer ID 인증서가 없는
+맥에서는 여전히 Apple Development로 서명되므로 위 문제가 그대로 생긴다 — 그런 맥은
+`make release-ci V=x.y.z`로 배포하고 `brew upgrade --cask spot`으로 교체한다.
 
 ### 트러블슈팅
 
@@ -255,7 +262,7 @@ Apple Development 서명본을 덮으면 **TCC DB상 "허용"인데도 AX가 무
 |---|---|---|
 | ⌃Space에 아무 반응 없음 | Spot이 실행 중이 아님 | `open /Applications/Spot.app`, `pgrep -x Spot`으로 확인 |
 | 권한 프롬프트가 안 뜸 | 낡은 TCC 기록이 프롬프트를 억제 | `tccutil reset Accessibility com.gowoobro.spot` 후 재시도 |
-| 재설치 후 힌트 모드가 조용히 죽음 | 서명 불일치 (ad-hoc, 또는 make install이 brew 본을 덮음) | `codesign -dv /Applications/Spot.app`로 서명 확인 — Developer ID가 아니면 `brew reinstall --cask spot` |
+| 재설치 후 힌트 모드가 조용히 죽음 | 서명 불일치 (ad-hoc, 또는 Developer ID 없는 맥에서 make install이 brew 본을 덮음) | `codesign -dv /Applications/Spot.app`로 서명 확인 — Developer ID가 아니면 `brew reinstall --cask spot` |
 | 힌트는 되는데 미디어 키만 안 됨 | 이벤트 탭이 안 붙음 | 메뉴바 열어 "(손쉬운 사용 권한 필요)" 표시 확인, `볼륨` 명령의 진단 행 확인 |
 | 볼륨 키가 안 먹음 (밝기는 됨) | 모니터가 DDC 볼륨 미지원, 또는 오디오 이름 매칭 실패 | `볼륨` 명령 진단 행에서 라우팅 확인 — [display-control.md](display-control.md) 참조 |
 | 우측⌘를 눌러도 한/영이 안 바뀜 | F18 시스템 단축키 미등록 (새 Mac) | 시스템 설정 → 키보드 단축키 → 입력 소스 → "이전 입력 소스 선택"에 우측⌘(=F18) 등록 |

@@ -34,6 +34,9 @@ swift run
 ./scripts/install.sh
 ```
 
+로컬 설치에는 Xcode가 필요하다 ("지금 재생 중" 위젯 확장을 xcodebuild로 빌드한다. 위젯 없이 빌드하려면 `SKIP_WIDGET=1`).
+`swift run`에는 위젯이 없다.
+
 릴리스·배포 절차는 [docs/RELEASE.md](docs/RELEASE.md) 참조.
 
 첫 실행 시 로그인 항목에 자동 등록된다. 끄려면 메뉴바 아이콘 → "로그인 시 자동 실행" 토글.
@@ -116,6 +119,13 @@ DDC가 되면 하드웨어(백라이트·스피커), 안 되면 감마 디밍(�
 > DDC가 안 되는 모니터에서는 볼륨 키를 삼키지 않고 시스템에 그대로 넘긴다.
 > `볼륨` 명령이 현재 라우팅·권한 상태를 진단 행으로 보여준다.
 
+### 지금 재생 중 위젯
+
+바탕화면·알림 센터에 놓는 위젯. 음악 앱이나 다른 앱(Spotify, 브라우저 등)에서 재생 중인 곡의
+앨범 아트·제목·진행 막대를 보여 주고, 버튼과 진행 막대로 재생을 제어한다. macOS 26 이상.
+바탕화면 control-클릭 › 위젯 편집 › "Spot"에서 추가한다. 위젯을 놓았을 때만 동작한다.
+자세한 것은 [docs/now-playing.md](docs/now-playing.md) 참조.
+
 상세 키맵과 각 기능 설명은 [docs/features.md](docs/features.md) 참조.
 
 ## 권한
@@ -125,6 +135,7 @@ DDC가 되면 하드웨어(백라이트·스피커), 안 되면 감마 디밍(�
   **손쉬운 사용(Accessibility)** 권한 필요
   — 첫 사용 시 시스템 프롬프트로 안내된다. 문제가 생기면 [docs/architecture.md의 권한·서명 절](docs/architecture.md#권한과-서명) 참조
 - 브라우저 탭 검색(`탭`)은 브라우저별 **자동화(Automation)** 권한 필요 — 첫 사용 시 프롬프트
+- 지금 재생 중 위젯은 음악 앱에 대한 **자동화** 권한 필요 — 위젯을 놓고 음악 앱이 켜져 있을 때 한 번 묻는다
 - 타이머·알람의 완료 배너는 **알림** 권한 필요 — 첫 타이머를 만들 때 한 번 묻는다
   (효과음은 권한과 무관하게 울린다)
 
@@ -135,6 +146,7 @@ DDC가 되면 하드웨어(백라이트·스피커), 안 되면 감마 디밍(�
 | [docs/readme.md](docs/readme.md) | 문서 인덱스 |
 | [docs/features.md](docs/features.md) | 전체 기능 상세 설명과 키맵 |
 | [docs/architecture.md](docs/architecture.md) | 코드 구조, 구현 방식, 권한·서명, 트러블슈팅 |
+| [docs/now-playing.md](docs/now-playing.md) | 지금 재생 중 위젯의 구조와 동작 방식 |
 | [docs/research.md](docs/research.md) | 설계 전 조사 (기존 런처·키보드 접근 앱 분석) |
 
 ## 구조
